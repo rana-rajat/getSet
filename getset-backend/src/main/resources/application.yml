@@ -1,0 +1,88 @@
+spring:
+  application:
+    name: getset-backend
+  
+  data:
+    mongodb:
+      uri: ${MONGODB_URI:mongodb://localhost:27017/getset}
+      auto-index-creation: true
+  
+  jwt:
+    secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
+    expiration: 86400000  # 24 hours in milliseconds
+
+server:
+  port: 8080
+  servlet:
+    context-path: /api/v1
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized
+
+springdoc:
+  api-docs:
+    path: /api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operations-sorter: method
+    tags-sorter: alpha
+
+logging:
+  level:
+    "[com.getset]": DEBUG
+    "[org.springframework.security]": DEBUG
+    "[org.springframework.data.mongodb]": DEBUG
+    "[io.github.resilience4j]": INFO
+
+# Resilience4J Configuration
+resilience4j:
+  retry:
+    instances:
+      userRepository:
+        maxAttempts: 3
+        wait-duration: 100
+        retryExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException
+  
+  circuitbreaker:
+    instances:
+      userRepository:
+        failureRateThreshold: 50
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 2000
+        waitDurationInOpenState: 30000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+        recordExceptions:
+          - java.io.IOException
+          - java.util.concurrent.TimeoutException
+        ignoreExceptions:
+          - java.lang.IllegalArgumentException
+      
+      propertyRepository:
+        failureRateThreshold: 50
+        slowCallRateThreshold: 100
+        slowCallDurationThreshold: 2000
+        waitDurationInOpenState: 30000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+  
+  timelimiter:
+    instances:
+      authService:
+        timeoutDuration: 5000
+        cancelRunningFuture: true
+      
+      propertyService:
+        timeoutDuration: 5000
+        cancelRunningFuture: true
+
