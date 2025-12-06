@@ -1,0 +1,38 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:latest
+    container_name: getset-mongodb
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: password
+      MONGO_INITDB_DATABASE: getset
+    volumes:
+      - mongodb_data:/data/db
+    networks:
+      - getset-network
+
+  getset-backend:
+    build: .
+    container_name: getset-backend
+    ports:
+      - "8080:8080"
+    environment:
+      MONGODB_URI: mongodb://root:password@mongodb:27017/getset?authSource=admin
+      JWT_SECRET: ${JWT_SECRET:-your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
+    depends_on:
+      - mongodb
+    networks:
+      - getset-network
+    restart: unless-stopped
+
+volumes:
+  mongodb_data:
+    driver: local
+
+networks:
+  getset-network:
+    driver: bridge
