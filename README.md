@@ -11,29 +11,35 @@ getset-backend/
 │       ├── java/com/getset/
 │       │   ├── auth/              # Authentication & Login
 │       │   ├── user/              # User management
-│       │   ├── property/          # Property management
-│       │   ├── enquiry/           # Enquiry system (future)
-│       │   ├── config/            # Spring configurations
+│       │   ├── property/          # Property management (CRUD, search, geospatial)
+│       │   ├── enquiry/           # Enquiry management system
+│       │   ├── favorite/          # Favorites/Wishlist feature
+│       │   ├── message/           # Direct messaging system
+│       │   ├── notification/      # Email notifications
+│       │   ├── config/            # Spring configurations (CORS, Security, Resilience)
 │       │   ├── security/          # JWT & security filters
-│       │   └── common/            # Utilities & error handling
+│       │   ├── exception/         # Exception handling & error responses
+│       │   └── common/            # Utilities, DTOs & response wrappers
 │       └── resources/
-│           └── application.yml    # Configuration file
-├── Dockerfile                      # Container image
-├── docker-compose.yml              # Docker Compose setup
-├── pom.xml                         # Maven dependencies
+│           ├── application.yml    # Configuration file
+│           └── logback-spring.xml # Logging configuration
+├── Dockerfile                      # Production container image
+├── docker-compose.yml              # Local development setup
+├── pom.xml                         # Maven dependencies & build config
 └── README.md                       # Detailed API documentation
 
 documentation/
-├── QUICK_START.md                 # Quick start guide
+├── DOCUMENTATION_INDEX.md         # Central documentation hub ⭐ NEW
+├── BUILD_COMPLETION_REPORT.md     # Build details & validation ⭐ NEW
+├── NEW_API_ENDPOINTS.md           # All 20+ API endpoints ⭐ NEW
+├── FINAL_STATUS.md                # Project completion status
+├── FINAL_STATUS_REPORT.md         # Comprehensive metrics
+├── QUICK_START.md                 # Getting started guide
+├── ARCHITECTURE.md                # System architecture & flows
 ├── IMPLEMENTATION_GUIDE.md        # Architecture & implementation
-├── ARCHITECTURE.md                # Visual architecture & flows
-├── COMPLETION_SUMMARY.md          # Project completion summary
-├── FILE_CHECKLIST.md              # File inventory
+├── COMPLETION_SUMMARY.md          # Feature overview
 └── build.sh / build.bat           # Build scripts
 
-frontend/
-└── [React frontend - separate repo]
-```
 
 ## ✨ Features Implemented
 
@@ -107,13 +113,59 @@ GET    /api/v1/properties/nearby             Find nearby properties
 GET    /api/v1/properties/owner/my-properties Get owner's properties (OWNER)
 ```
 
+### Enquiries (Phase 2)
+```
+POST   /api/v1/enquiries                     Submit enquiry (RENTER)
+GET    /api/v1/enquiries/{id}                Get enquiry details
+GET    /api/v1/enquiries/property/{propertyId} Get property enquiries (OWNER)
+GET    /api/v1/enquiries/renter/my-enquiries Get renter's enquiries (RENTER)
+PUT    /api/v1/enquiries/{id}                Accept/reject enquiry (OWNER)
+DELETE /api/v1/enquiries/{id}                Cancel enquiry (RENTER)
+GET    /api/v1/enquiries/owner/stats         Get enquiry statistics (OWNER)
+```
+
+### Favorites/Wishlist (Phase 2)
+```
+POST   /api/v1/favorites                     Add to favorites (RENTER)
+DELETE /api/v1/favorites/{propertyId}        Remove from favorites (RENTER)
+GET    /api/v1/favorites                     Get all favorites (RENTER)
+GET    /api/v1/favorites/check/{propertyId}  Check if favorited (RENTER)
+GET    /api/v1/favorites/count               Get favorite count (RENTER)
+PUT    /api/v1/favorites/{propertyId}        Update favorite notes (RENTER)
+```
+
+### Messages (Phase 2)
+```
+POST   /api/v1/messages                      Send message
+GET    /api/v1/messages/thread/{threadId}    Get conversation thread
+GET    /api/v1/messages/received             Get received messages
+GET    /api/v1/messages/sent                 Get sent messages
+GET    /api/v1/messages/unread               Get unread messages
+GET    /api/v1/messages/unread/count         Get unread count
+PUT    /api/v1/messages/{id}/read            Mark message as read
+PUT    /api/v1/messages/read-all             Mark all messages as read
+GET    /api/v1/messages/conversations        Get all conversations
+GET    /api/v1/messages/conversation/{userId}/{propertyId} Get specific conversation
+```
+
+### Notifications (Phase 2)
+```
+GET    /api/v1/notifications                 Get all notifications
+GET    /api/v1/notifications/unread          Get unread notifications
+GET    /api/v1/notifications/unread/count    Get unread count
+PUT    /api/v1/notifications/{id}/read       Mark notification as read
+PUT    /api/v1/notifications/read-all        Mark all as read
+DELETE /api/v1/notifications/{id}            Delete notification
+```
+
 ## 🔧 Tech Stack
 
 ```
 ✅ Java 21
-✅ Spring Boot 3.3.x
+✅ Spring Boot 3.4.10 (Spring Framework 6.2)
 ✅ Spring Security (JWT)
 ✅ Spring Data MongoDB
+✅ Spring Mail (Email notifications)
 ✅ MongoDB 5.0+
 ✅ Docker & Docker Compose
 ✅ Maven 3.8+
@@ -270,6 +322,66 @@ curl "http://localhost:8080/api/v1/properties/nearby?lat=19.0760&lng=72.8777&rad
 }
 ```
 
+### Enquiries Collection (Phase 2)
+```json
+{
+  "_id": ObjectId,
+  "renterId": ObjectId,
+  "ownerId": ObjectId,
+  "propertyId": ObjectId,
+  "message": "string",
+  "status": "PENDING | ACCEPTED | REJECTED",
+  "rejectionReason": "string or null",
+  "createdAt": ISODate,
+  "updatedAt": ISODate
+}
+```
+
+### Favorites Collection (Phase 2)
+```json
+{
+  "_id": ObjectId,
+  "renterId": ObjectId,
+  "propertyId": ObjectId,
+  "notes": "string",
+  "createdAt": ISODate,
+  "updatedAt": ISODate
+}
+```
+
+### Messages Collection (Phase 2)
+```json
+{
+  "_id": ObjectId,
+  "threadId": "string",
+  "senderId": ObjectId,
+  "senderName": "string",
+  "recipientId": ObjectId,
+  "recipientName": "string",
+  "propertyId": ObjectId,
+  "enquiryId": ObjectId,
+  "content": "string",
+  "read": boolean,
+  "createdAt": ISODate
+}
+```
+
+### Notifications Collection (Phase 2)
+```json
+{
+  "_id": ObjectId,
+  "recipientId": ObjectId,
+  "recipientEmail": "string",
+  "subject": "string",
+  "body": "string",
+  "type": "ENQUIRY_RECEIVED | ENQUIRY_ACCEPTED | ENQUIRY_REJECTED | MESSAGE_RECEIVED",
+  "read": boolean,
+  "emailSent": boolean,
+  "emailSentError": "string or null",
+  "createdAt": ISODate
+}
+```
+
 ## ⚙️ Environment Variables
 
 ```bash
@@ -312,25 +424,28 @@ Includes: Backend + MongoDB
 ## 🎯 Project Phases
 
 ### ✅ Phase 1: Core Property Management (COMPLETE)
-- User authentication
+- User authentication with JWT
 - Property CRUD operations
 - Search and filtering
-- Geospatial queries
+- Geospatial queries with MongoDB indexes
 
-### ⏳ Phase 2: Enquiry System
-- Create enquiry endpoints
-- Email notifications
-- Enquiry management
+### ✅ Phase 2: Enquiry & Messaging System (COMPLETE)
+- Enquiry management with status workflow (PENDING → ACCEPTED/REJECTED)
+- Favorites/Wishlist with personal notes
+- Direct messaging between owners and renters (thread-based)
+- Email notifications (enquiries, messages, status updates)
+- Full API documentation (20+ endpoints)
 
-### ⏳ Phase 3: Advanced Features
-- Favorites/Wishlist
+### ⏳ Phase 3: Advanced Features (Future)
 - Reviews & ratings
 - Search history
+- Payment integration
 
-### ⏳ Phase 4: Optimization
+### ⏳ Phase 4: Optimization (Future)
 - Redis caching
 - Elasticsearch
 - Kafka events
+- Performance monitoring
 
 ## 🚨 Troubleshooting
 
@@ -382,7 +497,8 @@ MIT License - See LICENSE file for details
 
 **Last Updated**: December 2025
 **Java Version**: 21
-**Spring Boot**: 3.3.x
+**Spring Boot**: 3.4.10 (Spring Framework 6.2)
 **MongoDB**: 5.0+
+**Status**: ✅ Phase 2 Complete - All features working
 
 Happy Renting! 🏠
