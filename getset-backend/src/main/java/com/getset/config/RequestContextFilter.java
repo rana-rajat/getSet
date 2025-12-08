@@ -17,7 +17,7 @@ import java.util.UUID;
  * for structured logging and distributed tracing
  */
 @Slf4j
-@Component
+@Component("getsetRequestContextFilter")
 public class RequestContextFilter extends OncePerRequestFilter {
 
     private static final String TRACE_ID_HEADER = "X-Trace-ID";

@@ -28,12 +28,14 @@ import org.springframework.web.cors.CorsConfigurationSource;
 @RequiredArgsConstructor
 public class SecurityConfig {
     
-    private final JwtAuthenticationFilter jwtAuthFilter;
     private final UserRepository userRepository;
     private final CorsConfigurationSource corsConfigurationSource;
+    private final com.getset.security.JwtService jwtService;
     
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+        JwtAuthenticationFilter jwtAuthFilter = new JwtAuthenticationFilter(jwtService, userDetailsService());
+        
         http
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource))
@@ -42,7 +44,10 @@ public class SecurityConfig {
                                 "/auth/**",
                                 "/api/v1/properties",
                                 "/api/v1/properties/**",
+                                "/swagger-ui.html",
                                 "/swagger-ui/**",
+                                "/v3/api-docs",
+                                "/v3/api-docs/**",
                                 "/api-docs/**",
                                 "/actuator/health",
                                 "/actuator/info"

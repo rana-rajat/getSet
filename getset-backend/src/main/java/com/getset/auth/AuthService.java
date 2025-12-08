@@ -33,7 +33,7 @@ public class AuthService {
     
     @Retry(name = "userRepository")
     @CircuitBreaker(name = "userRepository", fallbackMethod = "registerFallback")
-    @TimeLimiter(name = "authService")
+   // @TimeLimiter(name = "authService")
     public AuthResponse register(RegisterRequest request) {
         log.info("Processing user registration");
         

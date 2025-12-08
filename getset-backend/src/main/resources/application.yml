@@ -10,6 +10,27 @@ spring:
   jwt:
     secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
     expiration: 86400000  # 24 hours in milliseconds
+  
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
+      expiration: 86400000  # 24 hours in milliseconds
+
+  mail:
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+          connectiontimeout: 5000
+          timeout: 5000
+          writetimeout: 5000
 
 server:
   port: 8080
@@ -28,10 +49,17 @@ management:
 springdoc:
   api-docs:
     path: /api-docs
+    enabled: true
   swagger-ui:
     path: /swagger-ui.html
     operations-sorter: method
     tags-sorter: alpha
+  show-actuator: true
+  use-fqn: false
+  cache:
+    disabled: false
+  writer-with-default-pretty-printer: false
+  use-management-port: false
 
 logging:
   level:
@@ -39,6 +67,11 @@ logging:
     "[org.springframework.security]": DEBUG
     "[org.springframework.data.mongodb]": DEBUG
     "[io.github.resilience4j]": INFO
+    "[springdoc]": TRACE
+    "[org.springdoc]": TRACE
+    "[org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping]": DEBUG
+    "[org.springframework.web.servlet.DispatcherServlet]": DEBUG
+    "[org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor]": DEBUG
 
 # Resilience4J Configuration
 resilience4j:
@@ -81,7 +114,8 @@ resilience4j:
       authService:
         timeoutDuration: 5000
         cancelRunningFuture: true
-      
+
+
       propertyService:
         timeoutDuration: 5000
         cancelRunningFuture: true
