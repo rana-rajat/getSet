@@ -5,7 +5,8 @@ import com.getset.common.PageResponse;
 import com.getset.message.dto.ConversationResponse;
 import com.getset.message.dto.MessageRequest;
 import com.getset.message.dto.MessageResponse;
-import com.getset.notification.NotificationService;
+import com.getset.events.NotificationEvent;
+import com.getset.events.NotificationEventPublisher;
 import com.getset.user.UserDocument;
 import com.getset.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -27,7 +28,7 @@ public class MessageServiceImpl implements MessageService {
 
         private final MessageRepository messageRepository;
         private final UserRepository userRepository;
-        private final NotificationService notificationService;
+        private final NotificationEventPublisher eventPublisher;
 
         @Override
         @Transactional
@@ -60,15 +61,19 @@ public class MessageServiceImpl implements MessageService {
                 MessageDocument saved = messageRepository.save(message);
                 log.info("Message sent with ID: {}", saved.getId());
 
-                // Send notification to recipient
-                String preview = request.getContent().length() > 50 ? request.getContent().substring(0, 50) + "..."
+                // Publish async notification event — does NOT block the HTTP response
+                String preview = request.getContent().length() > 50
+                                ? request.getContent().substring(0, 50) + "..."
                                 : request.getContent();
-                notificationService.notifyNewMessage(
-                                request.getRecipientId(),
-                                recipient.getEmail(),
-                                recipient.getName(),
-                                senderName,
-                                preview);
+                eventPublisher.publish(NotificationEvent.builder()
+                                .eventType(NotificationEvent.EventType.MESSAGE_RECEIVED)
+                                .recipientId(request.getRecipientId())
+                                .recipientEmail(recipient.getEmail())
+                                .recipientName(recipient.getName())
+                                .actorName(senderName)
+                                .extraPayload(preview)
+                                .relatedEntityId(saved.getId())
+                                .build());
 
                 return mapToResponse(saved);
         }
