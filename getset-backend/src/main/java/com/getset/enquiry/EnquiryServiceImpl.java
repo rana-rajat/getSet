@@ -103,9 +103,6 @@ public class EnquiryServiceImpl implements EnquiryService {
     public PageResponse<EnquiryResponse> getEnquiriesByRenterId(String renterId, Pageable pageable) {
         log.info("Fetching enquiries by renter {}", renterId);
         
-        UserDocument renter = userRepository.findById(renterId)
-                .orElseThrow(() -> new NotFoundException("Renter not found"));
-        
         Page<EnquiryDocument> page = enquiryRepository.findByRenterId(renterId, pageable);
         
         var content = page.getContent().stream()

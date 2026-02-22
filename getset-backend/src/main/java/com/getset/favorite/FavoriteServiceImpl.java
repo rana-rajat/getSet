@@ -13,7 +13,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -54,7 +53,7 @@ public class FavoriteServiceImpl implements FavoriteService {
     public void removeFavorite(String propertyId, String renterId) {
         log.info("Removing favorite property {} for renter {}", propertyId, renterId);
         
-        FavoriteDocument favorite = favoriteRepository.findByRenterIdAndPropertyId(renterId, propertyId)
+        favoriteRepository.findByRenterIdAndPropertyId(renterId, propertyId)
                 .orElseThrow(() -> new NotFoundException("Property not in favorites"));
         
         favoriteRepository.deleteByRenterIdAndPropertyId(renterId, propertyId);

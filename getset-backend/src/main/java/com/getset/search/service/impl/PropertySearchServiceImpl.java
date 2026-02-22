@@ -14,7 +14,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
-import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
 public class PropertySearchServiceImpl implements PropertySearchService {
 
     private final PropertyRepository propertyRepository;
-    private final RedisTemplate<String, Object> redisTemplate;
 
     @Override
     public SearchResponseDto search(SearchRequestDto request) {
