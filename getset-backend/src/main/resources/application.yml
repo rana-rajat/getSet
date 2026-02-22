@@ -1,16 +1,33 @@
 spring:
   application:
     name: getset-backend
-  
+
   data:
     mongodb:
       uri: ${MONGODB_URI:mongodb://localhost:27017/getset}
       auto-index-creation: true
-  
+
+    elasticsearch:
+      uris: ${ELASTICSEARCH_HOST:http://localhost:9200}
+      socket-timeout: 60000
+      connection-timeout: 5000
+
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      timeout: 60000
+      jedis:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 0
+          max-wait: -1ms
+
   jwt:
     secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
     expiration: 86400000  # 24 hours in milliseconds
-  
+
   security:
     jwt:
       secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
@@ -31,6 +48,12 @@ spring:
           connectiontimeout: 5000
           timeout: 5000
           writetimeout: 5000
+
+  task:
+    scheduling:
+      pool:
+        size: 5
+      thread-name-prefix: getset-scheduler-
 
 server:
   port: 8080

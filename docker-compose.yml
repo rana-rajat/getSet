@@ -15,6 +15,42 @@ services:
     networks:
       - getset-network
 
+  redis:
+    image: redis:7-alpine
+    container_name: getset-redis
+    ports:
+      - "6379:6379"
+    command: redis-server --appendonly yes
+    volumes:
+      - redis_data:/data
+    networks:
+      - getset-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    container_name: getset-elasticsearch
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - ES_JAVA_OPTS=-Xms512m -Xmx512m
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - elasticsearch_data:/usr/share/elasticsearch/data
+    networks:
+      - getset-network
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
   getset-backend:
     build: .
     container_name: getset-backend
@@ -22,15 +58,27 @@ services:
       - "8080:8080"
     environment:
       MONGODB_URI: mongodb://root:password@mongodb:27017/getset?authSource=admin
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      ELASTICSEARCH_HOST: elasticsearch:9200
       JWT_SECRET: ${JWT_SECRET:-your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
     depends_on:
-      - mongodb
+      mongodb:
+        condition: service_started
+      redis:
+        condition: service_healthy
+      elasticsearch:
+        condition: service_healthy
     networks:
       - getset-network
     restart: unless-stopped
 
 volumes:
   mongodb_data:
+    driver: local
+  redis_data:
+    driver: local
+  elasticsearch_data:
     driver: local
 
 networks:
