@@ -1,912 +1,633 @@
-# GetSet - Rental Home Platform Backend
+# GetSet Backend — Developer Onboarding Guide
 
-A complete rental property platform with map-based search, location-aware results, and real-time communication. Built with Spring Boot 3.4.10, MongoDB, and JWT authentication.
-
----
-
-## 📋 Table of Contents
-
-1. [Project Overview](#project-overview)
-2. [Features](#features)
-3. [Tech Stack](#tech-stack)
-4. [Quick Start](#quick-start)
-5. [Architecture](#architecture)
-6. [Database Schema](#database-schema)
-7. [API Endpoints](#api-endpoints)
-8. [Security](#security)
-9. [Deployment](#deployment)
-10. [Troubleshooting](#troubleshooting)
+> **Purpose of this document**: Help a new developer understand the codebase quickly by walking through the project step-by-step — from how the app boots, to how a request travels through every layer, to how each feature is structured.
 
 ---
 
-## Project Overview
+## Table of Contents
 
-**Status**: ✅ Production Ready (v1.0.0)
-
-GetSet is a full-featured rental platform backend with:
-- JWT-based authentication with role-based access control (OWNER, RENTER, ADMIN)
-- Complete property management system (CRUD operations)
-- Advanced search with multiple filters and geospatial queries
-- MongoDB 2dsphere indexing for location-based searches
-- Enquiry management system for property interest tracking
-- Favorites/Wishlist feature with personal notes
-- Direct messaging system between owners and renters
-- Email notifications for enquiries, messages, and updates
-- Comprehensive REST API with 20+ endpoints
-- Swagger/OpenAPI auto-documentation
-- Docker containerization for easy deployment
-
-**Repository Structure**:
-```
-getset-backend/
-├── src/
-│   ├── main/
-│   │   ├── java/com/getset/
-│   │   │   ├── auth/              # Authentication & Login
-│   │   │   ├── user/              # User management
-│   │   │   ├── property/          # Property management (CRUD, search, geospatial)
-│   │   │   ├── enquiry/           # Enquiry management system
-│   │   │   ├── favorite/          # Favorites/Wishlist feature
-│   │   │   ├── message/           # Direct messaging system
-│   │   │   ├── notification/      # Email notifications
-│   │   │   ├── config/            # Spring configurations
-│   │   │   ├── security/          # JWT & security filters
-│   │   │   ├── exception/         # Exception handling
-│   │   │   └── common/            # Utilities & DTOs
-│   │   └── resources/
-│   │       ├── application.yml
-│   │       └── logback-spring.xml
-│   └── test/
-├── Dockerfile
-├── docker-compose.yml
-├── pom.xml
-└── README.md
-```
+1. [Project at a Glance](#1-project-at-a-glance)
+2. [Step 1 — Start Here: The Entry Point](#step-1--start-here-the-entry-point)
+3. [Step 2 — Configuration Layer](#step-2--configuration-layer)
+4. [Step 3 — Security & JWT](#step-3--security--jwt)
+5. [Step 4 — How a Request Flows Through the App](#step-4--how-a-request-flows-through-the-app)
+6. [Step 5 — Authentication Feature (End-to-End Walkthrough)](#step-5--authentication-feature-end-to-end-walkthrough)
+7. [Step 6 — Data Layer: Documents & Repositories](#step-6--data-layer-documents--repositories)
+8. [Step 7 — Feature Packages (Explore in This Order)](#step-7--feature-packages-explore-in-this-order)
+9. [Step 8 — Cross-Cutting Concerns](#step-8--cross-cutting-concerns)
+10. [Step 9 — Tests](#step-9--tests)
+11. [Step 10 — Configuration Files](#step-10--configuration-files)
+12. [Common Patterns](#common-patterns)
+13. [Troubleshooting](#troubleshooting)
 
 ---
 
-## Features
+## 1. Project at a Glance
 
-### ✅ Core Features
-- 🔐 JWT-based authentication with role-based access control
-- 🏠 Complete property CRUD operations
-- 🔍 Advanced search with multiple filters
-- 📍 Geospatial search (find properties near a location)
-- 🗺️ MongoDB 2dsphere index for location queries
-- 📄 Comprehensive REST API with 20+ endpoints
-- 📖 Swagger/OpenAPI auto-documentation
+GetSet is a **rental property platform backend** — think Airbnb/NoBroker. It lets:
 
-### ✅ Phase 2 Features
-- 📋 **Enquiry Management** - Renters express interest, owners accept/reject
-- ⭐ **Favorites/Wishlist** - Save properties with personal notes
-- 📧 **Email Notifications** - Automated alerts for enquiries and messages
-- 💬 **Direct Messaging** - Real-time conversations between owners and renters
+- **OWNERs** list rental properties, respond to enquiries, and message renters.
+- **RENTERs** search and filter properties (including geo-search), enquire, favourite, and message owners.
+- **ADMINs** access analytics and admin endpoints.
 
-### ✅ Technical Features
-- 🏗️ Layered architecture (Controller → Service → Repository)
-- 🛡️ Global exception handling
-- ✅ Input validation with annotations
-- 🔄 DTO pattern for clean API contracts
-- 🐳 Docker containerization
-- 📊 MongoDB Atlas ready
-- 🚀 Production-ready configuration
+**Key numbers:**
+- **87** Java source files
+- **35+** REST endpoints
+- **6** MongoDB collections
+- **5** Spring Boot feature packages
+- **20** unit tests
 
 ---
 
-## Tech Stack
+## Step 1 — Start Here: The Entry Point
 
-```
-✅ Java 21
-✅ Spring Boot 3.4.10 (Spring Framework 6.2)
-✅ Spring Security (JWT)
-✅ Spring Data MongoDB
-✅ Spring Data Elasticsearch
-✅ Spring Data Redis
-✅ Spring Mail (Email notifications)
-✅ MongoDB 5.0+
-✅ Elasticsearch 8.11.0
-✅ Redis 7+
-✅ Docker & Docker Compose
-✅ Maven 3.8+
-✅ Swagger/OpenAPI
-```
+**File:** `src/main/java/com/getset/GetSetApplication.java`
 
----
-
-## Quick Start
-
-### Option 1: Docker Compose (Easiest) - 30 seconds
-
-```bash
-cd d:\Projects\getSet\backend
-docker-compose up
-```
-
-Visit Swagger UI: http://localhost:8080/api/v1/swagger-ui.html
-
-### Option 2: Local Development - Maven
-
-```bash
-# Prerequisites: Java 21, Maven, MongoDB
-
-cd d:\Projects\getSet\backend\getset-backend
-
-# Start MongoDB (if not running)
-docker run -d -p 27017:27017 mongo:latest
-
-# Set environment variables (PowerShell)
-$env:MONGODB_URI = "mongodb://localhost:27017/getset"
-$env:JWT_SECRET = "your-256-bit-secret-key-minimum-32-characters"
-
-# Build and run
-mvn clean install
-mvn spring-boot:run
-```
-
-Access API: http://localhost:8080/api/v1
-
-### Option 3: Build Scripts
-
-```bash
-# Linux/Mac
-./build.sh
-
-# Windows
-build.bat
-```
-
----
-
-## Architecture
-
-### System Architecture
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                       FRONTEND (React)                           │
-│               (http://localhost:3000 or 5173)                   │
-└────────────────────────┬────────────────────────────────────────┘
-                         │
-                    CORS Headers
-                         │
-        ┌────────────────▼────────────────┐
-        │    Spring Boot Application       │
-        │    (port 8080, /api/v1)         │
-        ├─────────────────────────────────┤
-        │  ┌──────────────────────────┐   │
-        │  │  HTTP Layer              │   │
-        │  │  - REST Controllers      │   │
-        │  └──────────────┬───────────┘   │
-        │                 │               │
-        │  ┌──────────────▼───────────┐   │
-        │  │  Security Layer          │   │
-        │  │  - JWT Filter            │   │
-        │  │  - Authentication        │   │
-        │  │  - Authorization         │   │
-        │  └──────────────┬───────────┘   │
-        │                 │               │
-        │  ┌──────────────▼───────────┐   │
-        │  │  Service Layer           │   │
-        │  │  - Business Logic        │   │
-        │  │  - Validation            │   │
-        │  │  - Mappers               │   │
-        │  └──────────────┬───────────┘   │
-        │                 │               │
-        │  ┌──────────────▼───────────┐   │
-        │  │  Repository Layer        │   │
-        │  │  - MongoDB Queries       │   │
-        │  │  - Indexes               │   │
-        │  └──────────────┬───────────┘   │
-        └────────────────┬────────────────┘
-                         │
-        ┌────────────────▼────────────────┐
-        │    MongoDB Database             │
-        │    - users collection           │
-        │    - properties collection      │
-        │    - enquiries collection       │
-        │    - favorites collection       │
-        │    - messages collection        │
-        │    - notifications collection   │
-        │    - Geospatial indexes         │
-        └─────────────────────────────────┘
-```
-
-### Request/Response Flow
-
-```
-Client Request
-    ↓
-REST Controller
-    ↓
-Security Check (JWT Validation + @PreAuthorize)
-    ↓
-Input Validation (@Valid)
-    ↓
-Service Layer (Business Logic)
-    ↓
-Mapper (DTO ↔ Entity Conversion)
-    ↓
-Repository (MongoDB Query)
-    ↓
-Response Mapper (Entity → DTO)
-    ↓
-HTTP Response
-    ↓
-Client Receives Response
-```
-
-### Layered Architecture
-
-- **HTTP Layer**: REST Controllers handle incoming requests
-- **Security Layer**: JWT authentication and role-based authorization
-- **Service Layer**: Business logic, validation, orchestration
-- **Repository Layer**: Data access and MongoDB operations
-- **Database Layer**: MongoDB with optimized indexes
-
----
-
-## Database Schema
-
-### users Collection
-
-```json
-{
-  "_id": ObjectId,
-  "name": "string",
-  "email": "string (unique)",
-  "password": "string (hashed with BCrypt)",
-  "role": "OWNER | RENTER | ADMIN",
-  "phone": "string",
-  "createdAt": ISODate,
-  "updatedAt": ISODate
-}
-
-Indexes:
-- { "email": 1 } - unique
-- { "createdAt": -1 }
-```
-
-### properties Collection
-
-```json
-{
-  "_id": ObjectId,
-  "ownerId": ObjectId,
-  "title": "string",
-  "description": "string",
-  "type": "APARTMENT | HOUSE | PG | VILLA",
-  "pricePerMonth": number,
-  "bedrooms": number,
-  "bathrooms": number,
-  "furnished": boolean,
-  "amenities": [string],
-
-  "address": {
-    "fullAddress": "string",
-    "city": "string",
-    "state": "string",
-    "country": "string",
-    "pincode": "string"
-  },
-
-  "location": {
-    "type": "Point",
-    "coordinates": [longitude, latitude]
-  },
-
-  "photos": [string],
-  "isActive": boolean,
-  "createdAt": ISODate,
-  "updatedAt": ISODate
-}
-
-Indexes:
-- { "location": "2dsphere" }              - Geospatial queries
-- { "address.city": 1, "isActive": 1 }   - City filtering
-- { "pricePerMonth": 1 }                  - Price range queries
-- { "ownerId": 1, "isActive": 1 }        - Owner properties
-- { "createdAt": -1 }                     - Sorting
-```
-
-### enquiries Collection
-
-```json
-{
-  "_id": ObjectId,
-  "propertyId": ObjectId,
-  "renterId": ObjectId,
-  "ownerId": ObjectId,
-  "message": "string",
-  "status": "PENDING | ACCEPTED | REJECTED",
-  "rejectionReason": "string or null",
-  "createdAt": ISODate,
-  "updatedAt": ISODate
-}
-
-Indexes:
-- { "propertyId": 1 }
-- { "renterId": 1 }
-- { "ownerId": 1 }
-```
-
-### favorites Collection
-
-```json
-{
-  "_id": ObjectId,
-  "renterId": ObjectId,
-  "propertyId": ObjectId,
-  "notes": "string",
-  "createdAt": ISODate,
-  "updatedAt": ISODate
+```java
+@SpringBootApplication
+@EnableMongoAuditing   // ← enables @CreatedDate / @LastModifiedDate on documents
+public class GetSetApplication {
+    public static void main(String[] args) {
+        SpringApplication.run(GetSetApplication.class, args);
+    }
 }
 ```
 
-### messages Collection
+**What it does:**
+- Bootstraps the entire Spring context.
+- `@EnableMongoAuditing` is required for `createdAt`/`updatedAt` fields to be auto-populated on save.
 
-```json
-{
-  "_id": ObjectId,
-  "threadId": "string",
-  "senderId": ObjectId,
-  "senderName": "string",
-  "recipientId": ObjectId,
-  "recipientName": "string",
-  "propertyId": ObjectId,
-  "enquiryId": ObjectId,
-  "content": "string",
-  "read": boolean,
-  "createdAt": ISODate
+**Next file to open:** `src/main/resources/application.yml`
+
+---
+
+## Step 2 — Configuration Layer
+
+**Package:** `src/main/java/com/getset/config/`
+
+Read these files in order:
+
+### 2a. `application.yml` (resources/)
+
+The single source of truth for all configuration. Key sections:
+
+```yaml
+spring:
+  data:
+    mongodb.uri: ${MONGODB_URI}          # MongoDB connection
+    elasticsearch.uris: ${ELASTICSEARCH_HOST}
+    redis.host: ${REDIS_HOST}
+
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET}          # MUST be set — app won't start otherwise
+      expiration: 86400000               # 24h access token
+      refresh-expiration: 604800000      # 7 day refresh token
+
+server:
+  port: 8080
+  servlet.context-path: /api/v1         # All endpoints are prefixed /api/v1
+```
+
+> **Why no default for JWT_SECRET?** A missing fallback means the app fails on startup rather than running with a publicly-known key. This is intentional.
+
+### 2b. `SecurityConfig.java`
+
+**The most important config file.** Defines:
+- Which endpoints are public vs. protected.
+- The JWT filter placement in the chain.
+- Session policy (stateless — no server sessions).
+
+```
+Public endpoints:
+  POST /auth/register
+  POST /auth/login
+  POST /auth/refresh
+  GET  /properties (read-only search)
+  GET  /properties/{id}
+  GET  /properties/nearby
+  /swagger-ui.html, /api-docs
+  /actuator/health
+
+All other endpoints → require a valid JWT Bearer token.
+```
+
+### 2c. `CorsConfig.java`
+
+Reads allowed origins from the `APP_CORS_ALLOWED_ORIGINS` environment variable (comma-separated). Defaults to `localhost:3000` and `localhost:5173` for local dev.
+
+### 2d. `OpenApiConfig.java`
+
+Sets up the Swagger UI with Bearer token support. This is what powers the interactive docs at `/api/v1/swagger-ui.html`.
+
+### 2e. Other config files
+- `MongoConfig.java` — MongoTemplate, custom converters
+- `RedisConfig.java` — Redis connection factory, template setup
+- `AppConfig.java` — `PasswordEncoder` (BCrypt), `ModelMapper` beans
+
+---
+
+## Step 3 — Security & JWT
+
+**Package:** `src/main/java/com/getset/security/`
+
+### 3a. `JwtService.java`
+
+The core JWT utility. Understand this before looking at anything auth-related.
+
+| Method | What it does |
+|---|---|
+| `generateToken(UserDetails)` | Creates a short-lived access token (24h) |
+| `generateRefreshToken(UserDetails)` | Creates a long-lived refresh token (7 days) |
+| `extractUsername(token)` | Pulls the email (subject) from a token |
+| `isTokenValid(token, UserDetails)` | Verifies signature + expiry + username match |
+
+Both tokens are standard HS256 JWTs signed with the `JWT_SECRET` key.
+
+### 3b. `JwtAuthenticationFilter.java`
+
+A `OncePerRequestFilter` that runs on **every incoming HTTP request**:
+
+```
+1. Read the "Authorization: Bearer <token>" header
+2. Extract the token
+3. Call JwtService.extractUsername(token) → gets user email
+4. Load the user from MongoDB via UserDetailsService
+5. Call JwtService.isTokenValid(token, user)
+6. If valid → set SecurityContextHolder authentication
+7. If invalid or missing → do nothing (request proceeds unauthenticated)
+```
+
+The filter does **not** reject requests — `SecurityConfig` decides what's allowed through.
+
+---
+
+## Step 4 — How a Request Flows Through the App
+
+Every HTTP request follows this exact path:
+
+```
+HTTP Request (from browser / Postman)
+        │
+        ▼
+[ JwtAuthenticationFilter ]  ← validates token, populates SecurityContext
+        │
+        ▼
+[ SecurityConfig filter chain ]  ← checks if endpoint requires auth/role
+        │
+        ▼
+[ @RestController ]  ← parses request, calls @Valid on body
+        │
+        ▼
+[ @Service / @ServiceImpl ]  ← business logic, ownership checks, transactions
+        │
+        ▼
+[ @Repository ]  ← MongoDB query via Spring Data or custom MongoTemplate
+        │
+        ▼
+[ MongoDB ]  ← actual database read/write
+        │
+        ▼
+[ Service maps Document → DTO ]  ← never expose the raw Document to the client
+        │
+        ▼
+[ Controller returns ResponseEntity<DTO> ]
+        │
+        ▼
+HTTP Response (JSON)
+```
+
+**Key rule:** The Controller never calls the Repository directly. Always goes through the Service.
+
+---
+
+## Step 5 — Authentication Feature (End-to-End Walkthrough)
+
+The best way to understand the architecture is to trace one complete feature. Start with **auth** — it's the simplest.
+
+**Package:** `src/main/java/com/getset/auth/`
+
+### Files to read in order:
+
+#### 1. `dto/RegisterRequest.java`
+The incoming request body. Note Lombok `@Data`/`@Builder` and Jakarta `@NotBlank`/`@Email` validation annotations.
+
+#### 2. `dto/AuthResponse.java`
+The outgoing response. Contains `accessToken`, `refreshToken`, `id`, `name`, `email`, `role`.
+
+#### 3. `AuthController.java`
+Thin controller — no business logic. Four endpoints:
+
+| Endpoint | Method called |
+|---|---|
+| `POST /auth/register` | `authService.register(request)` → 201 Created |
+| `POST /auth/login` | `authService.login(request)` → 200 OK |
+| `POST /auth/refresh` | `authService.refreshToken(request)` → 200 OK |
+| `GET /auth/me` | `authService.getCurrentUser(email)` → 200 OK |
+
+#### 4. `AuthService.java`
+The business logic. Key things to notice:
+
+- **`register()`** — checks email uniqueness → BCrypt-hashes password → saves to MongoDB → generates **both** access and refresh tokens → returns `AuthResponse`.
+- **`login()`** — delegates credential check to Spring's `AuthenticationManager` → finds user → generates access token → returns `AuthResponse`.
+- **`refreshToken()`** — extracts username from refresh token → validates against DB user → issues new access token.
+- **Resilience4j** annotations: `@Retry` and `@CircuitBreaker` wrap the DB calls. If MongoDB is temporarily unreachable, the circuit opens and the fallback method runs instead of crashing.
+- **Rate Limiting**: `@RateLimiter(name = "authService")` limits login/register to **10 requests per minute** per instance to prevent brute-force attacks.
+
+---
+
+## Step 6 — Data Layer: Documents & Repositories
+
+**Package:** `src/main/java/com/getset/user/`
+
+### `UserDocument.java`
+The MongoDB document model annotated with `@Document(collection = "users")`.
+
+```java
+@Document(collection = "users")
+@Data @Builder @NoArgsConstructor @AllArgsConstructor
+public class UserDocument implements UserDetails {
+    @Id private String id;
+    private String name;
+    @Indexed(unique = true) private String email;
+    private String password;
+    private Role role;
+    private String phone;
+    @CreatedDate private Instant createdAt;
+    @LastModifiedDate private Instant updatedAt;
+
+    // implements UserDetails — used by Spring Security
+    @Override public Collection<GrantedAuthority> getAuthorities() { ... }
+    @Override public String getUsername() { return email; }
 }
 ```
 
-### notifications Collection
+**Important:** `UserDocument` implements `UserDetails` directly. This means it can be passed straight to Spring Security's `AuthenticationManager`, and is used as the `UserDetails` in the JWT filter.
+
+### `UserRepository.java`
+Extends `MongoRepository<UserDocument, String>`. Methods:
+```java
+Optional<UserDocument> findByEmail(String email);
+boolean existsByEmail(String email);
+```
+
+### `Role.java` (enum)
+```java
+public enum Role { RENTER, OWNER, ADMIN }
+```
+
+> Note the roles are **RENTER, OWNER, ADMIN** — not USER. If you see `Role.USER` anywhere it's a bug.
+
+---
+
+## Step 7 — Feature Packages (Explore in This Order)
+
+Each feature package follows the **same consistent pattern**:
+
+```
+{feature}/
+├── {Feature}Document.java       ← MongoDB document model
+├── {Feature}Repository.java     ← Spring Data Mongo interface
+├── {Feature}Service.java        ← Service interface
+├── {Feature}ServiceImpl.java    ← Business logic implementation
+├── {Feature}Controller.java     ← REST endpoints
+└── dto/                         ← Request/Response DTOs
+```
+
+Explore them in this order (simplest → most complex):
+
+---
+
+### 🏠 Property (`com.getset.property`)
+
+**What it does:** Core listing management — CRUD, search, geo-search.
+
+**Key files:**
+- `PropertyDocument.java` — has a `location` field of type `GeoJsonPoint` for geo-spatial queries.
+- `PropertyRepositoryImpl.java` — custom `MongoTemplate` queries for the advanced search (city filter, price range, bedroom count, furnished flag, pagination). This is where the non-trivial MongoDB aggregation lives.
+- `PropertyServiceImpl.java` — notice the `ForbiddenException` thrown when an OWNER tries to update another owner's property (`doc.getOwnerId().equals(ownerId)` check).
+- `PropertyController.java` — exposes paginated `PageResponse<PropertyResponse>` from the search endpoint (not a raw List).
+
+**Key concept — Pagination:**
+```java
+// Controller receives page/size as query params
+@GetMapping
+public ResponseEntity<PageResponse<PropertyResponse>> searchProperties(
+    @RequestParam(defaultValue = "0") int page,
+    @RequestParam(defaultValue = "10") int size, ...) { ... }
+
+// Service returns PageResponse wrapping the results
+return PageResponse.of(results, total, page, size);
+```
+
+---
+
+### 📋 Enquiry (`com.getset.enquiry`)
+
+**What it does:** Renters express interest in a property → owner accepts or rejects.
+
+**Key files:**
+- `EnquiryDocument.java` — stores `propertyId`, `renterId`, `ownerId`, and `EnquiryStatus`.
+- `EnquiryStatus.java` — `PENDING`, `ACCEPTED`, `REJECTED`.
+- `EnquiryServiceImpl.java` — when an enquiry is created or status changes, it calls `NotificationService` to send email + in-app notification. This is a **multi-document operation** guarded with `@Transactional`.
+
+**Flow:**
+```
+RENTER POSTs /enquiries
+  → saves EnquiryDocument
+  → creates NotificationDocument for OWNER
+  → sends email to OWNER
+  → returns EnquiryResponse
+
+OWNER PUTs /enquiries/{id} (accept/reject)
+  → updates EnquiryDocument.status
+  → creates NotificationDocument for RENTER
+  → sends email to RENTER
+```
+
+---
+
+### ⭐ Favorite (`com.getset.favorite`)
+
+**What it does:** RENTERs save properties to a wishlist with optional personal notes.
+
+**Key files:**
+- `FavoriteDocument.java` — just `renterId`, `propertyId`, `notes`.
+- `FavoriteServiceImpl.java` — straightforward CRUD. Notice the composite uniqueness check: a renter can't favorite the same property twice.
+
+---
+
+### 💬 Message (`com.getset.message`)
+
+**What it does:** Direct messaging between owners and renters, grouped by conversation threads.
+
+**Key files:**
+- `MessageDocument.java` — has a `threadId` field (a string combining `senderId + recipientId + propertyId` sorted, so the thread ID is the same regardless of who sends first).
+- `MessageServiceImpl.java` — `@Transactional` on `sendMessage()` because it saves the message AND creates a notification in a single operation.
+
+---
+
+### 🔔 Notification (`com.getset.notification`)
+
+**What it does:** In-app notification store + email dispatch.
+
+**Key files:**
+- `NotificationDocument.java` — tracks `read`, `emailSent`, `emailSentError`.
+- `NotificationServiceImpl.java` — two responsibilities:
+  1. **Persist** the notification document to MongoDB.
+  2. **Send email** via `JavaMailSender`. Email failures are caught and logged (not re-thrown) — a failed email does **not** roll back the notification save.
+
+---
+
+### 🔍 Search (`com.getset.search`)
+
+**What it does:** Elasticsearch-backed full-text search with autocomplete and trending.
+
+**Key files:**
+- Elasticsearch sync (scheduled) — indexes property documents from MongoDB into Elasticsearch.
+- Redis caching — 5-level cache strategy with TTL management for popular searches.
+- Admin endpoints for sync, trending analytics, and statistics.
+
+> **Note**: The Elasticsearch and Redis integrations add infrastructure dependencies. If you're running locally without them, properties will fall back to MongoDB-based search.
+
+---
+
+## Step 8 — Cross-Cutting Concerns
+
+These packages handle things that span all features:
+
+### `com.getset.exception`
+
+| Class | HTTP Status |
+|---|---|
+| `GetSetException` | Base class (no status) |
+| `NotFoundException` | 404 Not Found |
+| `ForbiddenException` | 403 Forbidden |
+| `UnauthorizedException` | 401 Unauthorized |
+
+### `com.getset.exception.GlobalExceptionHandler`
+
+A `@RestControllerAdvice` that catches all exceptions and returns a consistent JSON error response:
 
 ```json
 {
-  "_id": ObjectId,
-  "recipientId": ObjectId,
-  "recipientEmail": "string",
-  "subject": "string",
-  "body": "string",
-  "type": "ENQUIRY_RECEIVED | ENQUIRY_ACCEPTED | ENQUIRY_REJECTED | MESSAGE_RECEIVED",
-  "read": boolean,
-  "emailSent": boolean,
-  "emailSentError": "string or null",
-  "createdAt": ISODate
+  "status": 404,
+  "error": "Not Found",
+  "message": "Property not found",
+  "timestamp": "2026-02-22T13:45:00Z"
 }
 ```
 
----
+Never let controller methods return error strings manually — always throw the right exception and let this handler format the response.
 
-## API Endpoints
+### `com.getset.common.PageResponse<T>`
 
-### Authentication (3 endpoints)
+A generic paginated response wrapper:
 
-```
-POST   /api/v1/auth/register      Register new user
-POST   /api/v1/auth/login         Login user & get JWT
-GET    /api/v1/auth/me            Get current user info (auth required)
-```
-
-### Properties (7 endpoints)
-
-```
-POST   /api/v1/properties                    Create property (OWNER)
-PUT    /api/v1/properties/{id}               Update property (OWNER)
-DELETE /api/v1/properties/{id}               Delete/Deactivate property (OWNER)
-GET    /api/v1/properties/{id}               Get property details
-GET    /api/v1/properties                    Search with filters
-GET    /api/v1/properties/nearby             Geospatial search (find nearby)
-GET    /api/v1/properties/owner/my-properties Get owner's properties (OWNER)
+```java
+public class PageResponse<T> {
+    List<T> content;
+    int page;
+    int size;
+    long totalElements;
+    int totalPages;
+    boolean last;
+}
 ```
 
-### Enquiries (7 endpoints)
+Use this on **any endpoint that can return multiple results**. Never return a raw `List<T>` to the client.
 
-```
-POST   /api/v1/enquiries                     Submit enquiry (RENTER)
-GET    /api/v1/enquiries/{id}                Get enquiry details
-GET    /api/v1/enquiries/property/{propertyId} Get property enquiries (OWNER)
-GET    /api/v1/enquiries/renter/my-enquiries Get renter's enquiries (RENTER)
-PUT    /api/v1/enquiries/{id}                Accept/reject enquiry (OWNER)
-DELETE /api/v1/enquiries/{id}                Cancel enquiry (RENTER)
-GET    /api/v1/enquiries/owner/stats         Get enquiry statistics (OWNER)
-```
+### `com.getset.util.AuditLogger`
 
-### Favorites/Wishlist (6 endpoints)
-
-```
-POST   /api/v1/favorites                     Add to favorites (RENTER)
-DELETE /api/v1/favorites/{propertyId}        Remove from favorites (RENTER)
-GET    /api/v1/favorites                     Get all favorites (RENTER)
-GET    /api/v1/favorites/check/{propertyId}  Check if favorited (RENTER)
-GET    /api/v1/favorites/count               Get favorite count (RENTER)
-PUT    /api/v1/favorites/{propertyId}        Update favorite notes (RENTER)
-```
-
-### Messages (8 endpoints)
-
-```
-POST   /api/v1/messages                      Send message
-GET    /api/v1/messages/thread/{threadId}    Get conversation thread
-GET    /api/v1/messages/received             Get received messages
-GET    /api/v1/messages/sent                 Get sent messages
-GET    /api/v1/messages/unread               Get unread messages
-GET    /api/v1/messages/unread/count         Get unread count
-PUT    /api/v1/messages/{id}/read            Mark message as read
-PUT    /api/v1/messages/read-all             Mark all messages as read
-GET    /api/v1/messages/conversations        Get all conversations
-GET    /api/v1/messages/conversation/{userId}/{propertyId} Get specific conversation
-```
-
-### Notifications (5 endpoints)
-
-```
-GET    /api/v1/notifications                 Get all notifications
-GET    /api/v1/notifications/unread          Get unread notifications
-GET    /api/v1/notifications/unread/count    Get unread count
-PUT    /api/v1/notifications/{id}/read       Mark notification as read
-PUT    /api/v1/notifications/read-all        Mark all as read
-DELETE /api/v1/notifications/{id}            Delete notification
-```
-
-### Search & Discovery (8 endpoints - Phase 3)
-
-```
-GET    /api/v1/search/full-text              Full-text search with filters
-GET    /api/v1/search/suggestions            Autocomplete suggestions
-GET    /api/v1/search/facets                 Filter counts for UI
-GET    /api/v1/search/trending               Trending searches (last 7/30 days)
-GET    /api/v1/search/popular-properties     Most popular properties by view count
-GET    /api/v1/search/admin/sync-elasticsearch Sync MongoDB to ES index (Admin)
-GET    /api/v1/search/admin/trending-by-city Trending searches by city (Admin)
-GET    /api/v1/search/admin/statistics       Search statistics & analytics (Admin)
-```
-
-### Example: Create Property
-
-```bash
-curl -X POST http://localhost:8080/api/v1/properties \
-  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Modern 2BHK Apartment",
-    "description": "Beautiful apartment near metro",
-    "type": "APARTMENT",
-    "pricePerMonth": 50000,
-    "bedrooms": 2,
-    "bathrooms": 2,
-    "furnished": true,
-    "amenities": ["WiFi", "AC", "Parking"],
-    "address": {
-      "fullAddress": "123 Main St",
-      "city": "Mumbai",
-      "state": "Maharashtra",
-      "country": "India",
-      "pincode": "400001"
-    },
-    "lat": 19.0760,
-    "lng": 72.8777,
-    "photos": ["https://example.com/photo1.jpg"]
-  }'
-```
-
-### Example: Search Properties
-
-```bash
-curl "http://localhost:8080/api/v1/properties?city=Mumbai&minPrice=40000&maxPrice=60000&minBedrooms=2"
-```
-
-### Example: Find Nearby Properties
-
-```bash
-curl "http://localhost:8080/api/v1/properties/nearby?lat=19.0760&lng=72.8777&radiusKm=5"
-```
+A dedicated structured audit logger. Called in `AuthService` to record every login attempt, registration, and authorization failure with a structured log line. Feeds into the Logstash JSON log output. Don't write raw `log.info("User logged in")` for security events — go through `AuditLogger`.
 
 ---
 
-## Security
+## Step 9 — Tests
 
-### Authentication Flow
+**Package:** `src/test/java/com/getset/`
 
-1. User registers with email/password/role
-2. Password is hashed using BCrypt
-3. User logs in and receives JWT token
-4. Token contains: userId, email, role, expiration
-5. Token is signed with JWT_SECRET (256-bit minimum)
+| Test File | Type | What It Covers |
+|---|---|---|
+| `security/JwtServiceTest.java` | Unit | Token generation, expiry, validation (5 tests) |
+| `auth/AuthServiceTest.java` | Unit | register, login, refresh, getCurrentUser, error cases (8 tests) |
+| `auth/AuthControllerTest.java` | MockMvc | HTTP layer — status codes, request/response JSON (2 tests) |
+| `property/PropertyServiceImplTest.java` | Unit | CRUD, ownership guard, not-found (5 tests) |
 
-### Authorization Flow
-
-1. Client includes JWT in Authorization header: `Bearer <token>`
-2. JwtAuthenticationFilter validates token
-3. Token signature is verified
-4. Expiration is checked
-5. Role-based access is enforced with @PreAuthorize
-6. Ownership is verified for resource modifications
-
-### Security Features
-
-✅ JWT token-based authentication
-✅ Role-based access control (OWNER, RENTER, ADMIN)
-✅ BCrypt password hashing
-✅ Ownership verification for updates/deletes
-✅ CORS configuration for frontend
-✅ Input validation with annotations
-✅ Global exception handling
-✅ SQL injection prevention (using Spring Data)
-
-### Environment Variables
+### Running Tests
 
 ```bash
-# MongoDB
-MONGODB_URI=mongodb://localhost:27017/getset
+# Run all tests
+mvn clean test
 
-# JWT Secret (minimum 32 characters)
-JWT_SECRET=your-secure-256-bit-key-here
+# Run a specific test class
+mvn test -Dtest=AuthServiceTest
+
+# Run with a specific profile
+mvn test -Dspring.profiles.active=dev
 ```
+
+### Test Patterns Used
+
+**Unit tests** (`AuthServiceTest`, `PropertyServiceImplTest`, `JwtServiceTest`) use:
+- `@ExtendWith(MockitoExtension.class)` — pure Mockito, no Spring context
+- `@Mock` for dependencies, `@InjectMocks` for the class under test
+- `when(...).thenReturn(...)` to stub behavior
+- `assertThrows(...)` to verify exception paths
+
+**Controller tests** (`AuthControllerTest`) use:
+- `MockMvcBuilders.standaloneSetup(controller)` — lightweight, no full Spring context
+- `mockMvc.perform(post(...).content(...)).andExpect(status().isCreated())`
 
 ---
 
-## Deployment
+## Step 10 — Configuration Files
 
-### Docker Compose (Recommended for Local Development)
-
-```bash
-docker-compose up
-```
-
-Includes: Backend (port 8080) + MongoDB (port 27017)
-
-### Docker Build & Run
-
-```bash
-# Build image
-docker build -t getset-backend:latest .
-
-# Run container
-docker run -p 8080:8080 \
-  -e MONGODB_URI=mongodb://host.docker.internal:27017/getset \
-  -e JWT_SECRET=your-key \
-  getset-backend:latest
-```
-
-### Cloud Platforms (Ready to Deploy)
-
-- ✅ AWS ECS/Fargate
-- ✅ Google Cloud Run
-- ✅ Azure Container Instances
-- ✅ Heroku
-- ✅ DigitalOcean
-- ✅ Railway
-- ✅ Kubernetes
-
-### Production Deployment Checklist
-
-1. Build Docker image
-2. Set environment variables (MONGODB_URI, JWT_SECRET)
-3. Configure MongoDB Atlas (or self-hosted)
-4. Deploy to cloud platform
-5. Configure reverse proxy (nginx)
-6. Enable HTTPS/TLS
-7. Update CORS origins for frontend domain
-8. Configure email service for notifications
-9. Set up monitoring and logging
-10. Enable backup strategies
+| File | Location | Purpose |
+|---|---|---|
+| `application.yml` | `src/main/resources/` | Base config — all environments |
+| `application-dev.yml` | `src/main/resources/` | Dev overrides (DEBUG logging, relaxed settings) |
+| `application-prod.yml` | `src/main/resources/` | Prod overrides (WARN logging, strict settings) |
+| `logback-spring.xml` | `src/main/resources/` | Log format — JSON for prod, pretty for dev |
+| `.env.example` | project root | Template for all required environment variables |
+| `docker-compose.yml` | project root | Starts app + MongoDB + Redis |
+| `Dockerfile` | `getset-backend/` | Multi-stage build → minimal JRE image |
+| `pom.xml` | `getset-backend/` | All Maven dependencies and plugins |
 
 ---
 
-## Performance Optimizations
+## Common Patterns
 
-✅ MongoDB geospatial indexes for efficient location queries
-✅ City index for fast filtering
-✅ Price range index for range queries
-✅ Pagination support for large datasets
-✅ Query optimization with projections
-✅ Connection pooling
-✅ Lazy loading optimization
-✅ DTO pattern to minimize data transfer
+### Pattern 1: Service → Repository → Mapping
 
-### Response Times
+Every service method follows this shape:
 
-- GET property list: ~50-100ms
-- Search with filters: ~100-200ms
-- Geospatial search (5km radius): ~150-300ms
-- Create property: ~50-100ms
-- Update property: ~50-100ms
+```java
+public PropertyResponse getProperty(String id) {
+    // 1. Fetch or throw
+    PropertyDocument doc = propertyRepository.findById(id)
+        .orElseThrow(() -> new NotFoundException("Property not found"));
 
----
-
-## Project Statistics
-
-| Metric | Count |
-|--------|-------|
-| **Total Java Files** | 25+ |
-| **REST Endpoints** | 20+ |
-| **DTOs Implemented** | 10+ |
-| **Database Collections** | 6 |
-| **Configuration Classes** | 3+ |
-| **Service Layer Classes** | 6 |
-| **Repository Implementations** | 6 |
-| **Documentation Files** | 1 (consolidated) |
-| **Lines of Code (Backend)** | 3,000+ |
-| **Build Time** | ~30 seconds |
-| **Docker Build Time** | ~2 minutes |
-
----
-
-## Code Quality Standards
-
-### Design Patterns
-
-✅ Repository Pattern - Data access abstraction
-✅ Service Pattern - Business logic encapsulation
-✅ DTO Pattern - Clean API contracts
-✅ Mapper Pattern - Entity-DTO conversion
-✅ Dependency Injection - Loose coupling
-
-### SOLID Principles
-
-✅ Single Responsibility - Each class has one job
-✅ Open/Closed - Open for extension, closed for modification
-✅ Liskov Substitution - Interface contracts honored
-✅ Interface Segregation - Focused interfaces
-✅ Dependency Inversion - Depend on abstractions
-
-### Best Practices
-
-✅ Meaningful class/method names
-✅ Proper exception handling with custom exceptions
-✅ Input validation at API boundaries
-✅ Lazy loading optimization
-✅ Configuration externalization
-✅ Security best practices
-✅ Logging at appropriate levels (INFO, WARN, ERROR)
-✅ Comprehensive comments where logic isn't self-evident
-
----
-
-## Testing the API
-
-### 1. Register User
-
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "John Doe",
-    "email": "john@example.com",
-    "password": "Password123!",
-    "role": "OWNER"
-  }'
+    // 2. Map Document → DTO (never expose the Document itself)
+    return PropertyMapper.toResponse(doc);
+}
 ```
 
-### 2. Login
+### Pattern 2: Ownership Guard
 
-```bash
-curl -X POST http://localhost:8080/api/v1/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{
-    "email": "john@example.com",
-    "password": "Password123!"
-  }'
+Any mutating operation checks the caller owns the resource:
+
+```java
+if (!doc.getOwnerId().equals(currentUserId)) {
+    throw new ForbiddenException("Not authorized to modify this resource");
+}
 ```
 
-*Save the `accessToken` from response*
+### Pattern 3: Getting the Current User in a Service
 
-### 3. Create Property (with JWT)
+The authenticated user's email is available from Spring Security:
 
-```bash
-curl -X POST http://localhost:8080/api/v1/properties \
-  -H "Authorization: Bearer <YOUR_JWT_TOKEN>" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Modern 2BHK Apartment",
-    "description": "Beautiful apartment",
-    "type": "APARTMENT",
-    "pricePerMonth": 50000,
-    "bedrooms": 2,
-    "bathrooms": 2,
-    "furnished": true,
-    "amenities": ["WiFi", "AC", "Parking"],
-    "address": {
-      "fullAddress": "123 Main St",
-      "city": "Mumbai",
-      "state": "Maharashtra",
-      "country": "India",
-      "pincode": "400001"
-    },
-    "lat": 19.0760,
-    "lng": 72.8777
-  }'
+```java
+// In a controller:
+public ResponseEntity<?> someEndpoint(Authentication authentication) {
+    String email = authentication.getName();
+    ...
+}
 ```
 
-### 4. Search Properties
+### Pattern 4: Resilience4j on Service Methods
 
-```bash
-curl "http://localhost:8080/api/v1/properties?city=Mumbai&minPrice=40000&maxPrice=60000"
+DB-calling service methods are wrapped with:
+
+```java
+@Retry(name = "userRepository")
+@CircuitBreaker(name = "userRepository", fallbackMethod = "myFallback")
+public SomeResponse myMethod(...) { ... }
+
+public SomeResponse myFallback(..., Exception ex) {
+    throw new RuntimeException("Service temporarily unavailable");
+}
 ```
 
-### 5. Geospatial Search
+### Pattern 5: Returning Paginated Results
 
-```bash
-curl "http://localhost:8080/api/v1/properties/nearby?lat=19.0760&lng=72.8777&radiusKm=5"
+```java
+// Controller
+@GetMapping
+public ResponseEntity<PageResponse<PropertyResponse>> list(
+        @RequestParam(defaultValue = "0") int page,
+        @RequestParam(defaultValue = "10") int size) {
+    return ResponseEntity.ok(propertyService.list(page, size));
+}
+
+// Service
+public PageResponse<PropertyResponse> list(int page, int size) {
+    Page<PropertyDocument> result = repository.findAll(PageRequest.of(page, size));
+    List<PropertyResponse> content = result.getContent().stream()
+        .map(PropertyMapper::toResponse)
+        .toList();
+    return PageResponse.of(content, result.getTotalElements(), page, size);
+}
 ```
-
-### 6. Access Swagger UI
-
-Once the application is running, visit:
-```
-http://localhost:8080/api/v1/swagger-ui.html
-```
-
-This provides interactive API documentation and allows you to test all endpoints directly.
 
 ---
 
 ## Troubleshooting
 
-### MongoDB Connection Failed
-
-**Error**: Unable to connect to MongoDB
-
-**Solution**:
-```bash
-# Ensure MongoDB is running
-docker run -d -p 27017:27017 mongo:latest
-
-# Or check if MongoDB is running locally
-mongo --version
+### App fails to start — `JWT_SECRET`
+```
+Caused by: java.lang.IllegalArgumentException: Could not resolve placeholder 'JWT_SECRET'
+```
+**Fix:** Set `JWT_SECRET` as an environment variable (min 32 characters, Base64-encoded recommended):
+```powershell
+$env:JWT_SECRET = "your-super-secret-key-minimum-32-chars"
 ```
 
-### Port 8080 Already in Use
-
-**Error**: Port 8080 is already in use
-
-**Solutions**:
+### App fails to start — MongoDB not running
+```
+com.mongodb.MongoTimeoutException: Timed out after 30000ms
+```
+**Fix:** Start MongoDB via Docker:
 ```bash
-# Option 1: Change port in application.yml
-# server.port: 8081
+docker run -d -p 27017:27017 --name mongo mongo:7
+```
 
-# Option 2: Kill process using port 8080 (Windows)
+### CORS error from frontend
+**Fix:** Set the env var:
+```powershell
+$env:APP_CORS_ALLOWED_ORIGINS = "http://localhost:3000,http://localhost:5173"
+```
+
+### Token expired (401 Unauthorized)
+Use the `/auth/refresh` endpoint with your `refreshToken` from login to get a new access token (valid 7 days). If the refresh token is also expired, log in again.
+
+### Port 8080 in use
+```powershell
 netstat -ano | findstr :8080
 taskkill /PID <PID> /F
-
-# Option 3: Kill process using port 8080 (Linux/Mac)
-lsof -ti:8080 | xargs kill -9
 ```
 
-### JWT Token Expired
-
-**Error**: Invalid or expired token
-
-**Solution**:
-- Register and login again to get a fresh token
-- Tokens expire after 24 hours
-- Store JWT in localStorage and include in Authorization header
-
-### CORS Issues
-
-**Error**: CORS policy blocking requests from frontend
-
-**Solution**:
-- Update allowed origins in `CorsConfig.java`
-  ```java
-  configuration.setAllowedOrigins(Arrays.asList("http://localhost:3000"));
-  ```
-- Rebuild and restart application
-
-### Database Connection String Issues
-
-**Solution**: Verify the MONGODB_URI format:
+### Build failure — Java version
 ```bash
-# Local
-mongodb://localhost:27017/getset
-
-# MongoDB Atlas
-mongodb+srv://username:password@cluster.mongodb.net/getset?retryWrites=true&w=majority
-```
-
-### Build Failures
-
-**Solution**:
-```bash
-# Clean and rebuild
-mvn clean install
-
-# Skip tests during build
-mvn clean install -DskipTests
-
-# Check Java version
-java -version  # Should be 21+
+java -version  # Must be 21+
 ```
 
 ---
 
-## Project Phases
+## Where Each Type of Change Goes
 
-### ✅ Phase 1: Core Property Management (COMPLETE)
-- User authentication with JWT
-- Property CRUD operations
-- Search and filtering
-- Geospatial queries with MongoDB indexes
-
-### ✅ Phase 2: Enquiry & Messaging System (COMPLETE)
-- Enquiry management with status workflow
-- Favorites/Wishlist with personal notes
-- Direct messaging between users
-- Email notifications
-- Full API documentation (20+ endpoints)
-
-### ✅ Phase 3: Search & Discovery (COMPLETE)
-- Full-text search with Elasticsearch (8 new endpoints)
-- Redis caching layer (5-level strategy with TTL management)
-- Search analytics tracking for every query
-- Trending searches identification
-- Faceted search with filter counts
-- Autocomplete suggestions engine
-- Scheduled Elasticsearch syncing (daily full + hourly incremental)
-- Admin analytics endpoints for insights
-- Sub-200ms average search response time
-- 60-70% cache hit rate for popular searches
-
-### ⏳ Phase 4: Advanced Features (Future)
-- Reviews & ratings system
-- Payment integration (Stripe/Razorpay)
-- Real-time WebSocket messaging
-- User profile enhancements
-- Recommendations engine (ML-based)
+| Change type | File(s) to edit |
+|---|---|
+| New REST endpoint | Add to `{Feature}Controller.java` |
+| New business rule | Edit `{Feature}ServiceImpl.java` |
+| New MongoDB field | Edit `{Feature}Document.java` |
+| New DTO field | Edit relevant DTO in `dto/` |
+| Change which endpoints are public | Edit `SecurityConfig.java` |
+| Change CORS origins | Change `APP_CORS_ALLOWED_ORIGINS` env var |
+| Change log verbosity | Edit `application-dev.yml` or `application-prod.yml` |
+| Add a new error type | Create class in `exception/`, extend `GetSetException` |
+| Add a new config property | Add to `application.yml` with `${ENV_VAR:default}` pattern |
 
 ---
 
-## Resources & Documentation
-
-- [Spring Boot Documentation](https://spring.io/projects/spring-boot)
-- [MongoDB Documentation](https://docs.mongodb.com/)
-- [JWT Introduction](https://jwt.io/introduction)
-- [REST API Best Practices](https://restfulapi.net/)
-- [Swagger/OpenAPI Spec](https://swagger.io/)
-
----
-
-## Support & Contributions
-
-For issues, questions, or contributions:
-1. Check this documentation
-2. Review the API examples
-3. Check MongoDB logs: `docker logs <container_id>`
-4. Verify JWT configuration in `application.yml`
-5. Check application logs for detailed error messages
-
----
-
-## License
-
-MIT License - See LICENSE file for details
-
----
-
-## Project Status
-
-**Status**: ✅ **PRODUCTION READY** (v1.2.0)
-
-- All core features implemented and tested (Phase 1-3)
-- 35+ API endpoints fully documented with Swagger/OpenAPI
-- Elasticsearch full-text search with 8 new endpoints
-- Redis multi-level caching (5 strategies)
-- Search analytics for advertising targeting
-- Docker containerization with 3 services (MongoDB, Redis, Elasticsearch)
-- Scheduled tasks for Elasticsearch syncing
-- Production-ready with security & error handling
-- Ready for frontend integration and scaling
-
-**Last Updated**: February 2026
-**Java Version**: 21
-**Spring Boot**: 3.4.10 (Spring Framework 6.2)
-**MongoDB**: 5.0+
-**Elasticsearch**: 8.11.0
-**Redis**: 7+
-**Ready for Production**: YES ✅
-
----
-
-Happy Renting! 🏠
+*Happy exploring! Start at `GetSetApplication.java` and follow the path. 🏠*
