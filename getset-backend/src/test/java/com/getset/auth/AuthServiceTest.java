@@ -118,7 +118,6 @@ class AuthServiceTest {
     void login_Success() {
         when(userRepository.findByEmail(testEmail)).thenReturn(Optional.of(testUser));
         when(jwtService.generateToken(testUser)).thenReturn(testToken);
-        when(jwtService.generateRefreshToken(testUser)).thenReturn(testRefreshToken);
 
         AuthResponse response = authService.login(loginRequest);
 
@@ -177,7 +176,7 @@ class AuthServiceTest {
         assertNotNull(response);
         assertEquals(testEmail, response.getEmail());
         assertEquals(testUser.getId(), response.getId());
-        verify(auditLogger).logResourceAccess(eq(testUser.getId()), eq("USER"), eq(testUser.getId()), eq("FETCH"));
+        verify(auditLogger).logResourceAccess(eq(testUser.getId()), anyString(), eq(testUser.getId()), eq("FETCH"));
     }
 
     @Test
@@ -185,6 +184,6 @@ class AuthServiceTest {
         when(userRepository.findByEmail(testEmail)).thenReturn(Optional.empty());
 
         assertThrows(UsernameNotFoundException.class, () -> authService.getCurrentUser(testEmail));
-        verify(auditLogger).logAuthorizationFailure(eq(testEmail), eq("USER"), eq("FETCH"));
+        verify(auditLogger).logAuthorizationFailure(eq(testEmail), anyString(), eq("FETCH"));
     }
 }

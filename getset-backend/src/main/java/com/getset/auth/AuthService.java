@@ -2,8 +2,8 @@ package com.getset.auth;
 
 import com.getset.auth.dto.AuthResponse;
 import com.getset.auth.dto.LoginRequest;
-import com.getset.auth.dto.RegisterRequest;
 import com.getset.auth.dto.RefreshTokenRequest;
+import com.getset.auth.dto.RegisterRequest;
 import com.getset.auth.dto.UserResponse;
 import com.getset.exception.UnauthorizedException;
 import com.getset.security.JwtService;
@@ -12,8 +12,6 @@ import com.getset.user.UserRepository;
 import com.getset.util.AuditLogger;
 import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
 import io.github.resilience4j.retry.annotation.Retry;
-import io.github.resilience4j.timelimiter.annotation.TimeLimiter;
-import io.github.resilience4j.ratelimiter.annotation.RateLimiter;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -36,7 +34,6 @@ public class AuthService {
 
     @Retry(name = "userRepository")
     @CircuitBreaker(name = "userRepository", fallbackMethod = "registerFallback")
-    @RateLimiter(name = "authService", fallbackMethod = "rateLimitFallback")
     public AuthResponse register(RegisterRequest request) {
         log.info("Processing user registration");
 
@@ -80,7 +77,6 @@ public class AuthService {
 
     @Retry(name = "userRepository")
     @CircuitBreaker(name = "userRepository", fallbackMethod = "loginFallback")
-    @RateLimiter(name = "authService", fallbackMethod = "rateLimitFallback")
     public AuthResponse login(LoginRequest request) {
         log.info("Processing user login");
 
@@ -104,12 +100,10 @@ public class AuthService {
                 });
 
         var jwtToken = jwtService.generateToken(user);
-        var refreshToken = jwtService.generateRefreshToken(user);
         log.info("User login successful");
 
         return AuthResponse.builder()
                 .accessToken(jwtToken)
-                .refreshToken(refreshToken)
                 .id(user.getId())
                 .name(user.getName())
                 .email(user.getEmail())
@@ -120,40 +114,6 @@ public class AuthService {
     public AuthResponse loginFallback(LoginRequest request, Exception ex) {
         log.error("Login fallback triggered", ex);
         throw new RuntimeException("Service temporarily unavailable, please try again later", ex);
-    }
-
-    public AuthResponse refreshToken(RefreshTokenRequest request) {
-        log.info("Processing refresh token request");
-
-        try {
-            String userEmail = jwtService.extractUsername(request.getRefreshToken());
-            if (userEmail != null) {
-                var user = userRepository.findByEmail(userEmail)
-                        .orElseThrow(() -> new UnauthorizedException("Invalid refresh token"));
-
-                if (jwtService.isTokenValid(request.getRefreshToken(), user)) {
-                    var accessToken = jwtService.generateToken(user);
-
-                    return AuthResponse.builder()
-                            .accessToken(accessToken)
-                            .refreshToken(request.getRefreshToken())
-                            .id(user.getId())
-                            .name(user.getName())
-                            .email(user.getEmail())
-                            .role(user.getRole())
-                            .build();
-                }
-            }
-            throw new UnauthorizedException("Invalid refresh token");
-        } catch (Exception e) {
-            log.warn("Failed to refresh token", e);
-            throw new UnauthorizedException("Invalid refresh token");
-        }
-    }
-
-    public AuthResponse rateLimitFallback(Exception e) {
-        throw new com.getset.exception.GetSetException("TOO_MANY_REQUESTS",
-                "Too Many Requests");
     }
 
     @Retry(name = "userRepository")
@@ -184,5 +144,30 @@ public class AuthService {
     public UserResponse getCurrentUserFallback(String email, Exception ex) {
         log.error("Get current user fallback triggered", ex);
         throw new RuntimeException("Service temporarily unavailable, please try again later", ex);
+    }
+
+    public AuthResponse refreshToken(RefreshTokenRequest request) {
+        log.info("Processing token refresh");
+        String token = request.getRefreshToken();
+        String username = jwtService.extractUsername(token);
+
+        var user = userRepository.findByEmail(username)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+
+        if (!jwtService.isTokenValid(token, user)) {
+            throw new UnauthorizedException("Invalid or expired refresh token");
+        }
+
+        var newAccessToken = jwtService.generateToken(user);
+        log.info("Token refreshed successfully for user: {}", username);
+
+        return AuthResponse.builder()
+                .accessToken(newAccessToken)
+                .refreshToken(token)
+                .id(user.getId())
+                .name(user.getName())
+                .email(user.getEmail())
+                .role(user.getRole())
+                .build();
     }
 }
