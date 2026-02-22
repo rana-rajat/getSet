@@ -1,0 +1,4 @@
+com\getset\notification\service\EmailService.class
+com\getset\notification\consumer\NotificationEventConsumer$1.class
+com\getset\notification\NotificationServiceApplication.class
+com\getset\notification\consumer\NotificationEventConsumer.class

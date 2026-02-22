@@ -1,0 +1,8 @@
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\api\FavoriteController.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\client\PropertyServiceClient.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\config\SecurityConfig.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\domain\FavoriteDocument.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\domain\FavoriteRepository.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\FavoriteServiceApplication.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\security\JwtAuthenticationFilter.java
+D:\Projects\getSet\backend\favorite-service\src\main\java\com\getset\favorite\security\JwtService.java

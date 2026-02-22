@@ -1,6 +1,7 @@
-# GetSet Backend — Complete Project Structure Reference
+# GetSet Backend — Complete Project Structure Reference (Microservices)
 
 > Every package, every class, every file — with a one-line description of what each one does.
+> For a guided walkthrough, see **[DEVELOPER_WALKTHROUGH.md](./DEVELOPER_WALKTHROUGH.md)**.
 
 ---
 
@@ -8,256 +9,346 @@
 
 ```
 getSet/backend/
-├── getset-backend/          ← Main Spring Boot application (port 8080)
-│   ├── src/main/java/com/getset/
-│   ├── src/test/java/com/getset/
-│   └── src/main/resources/
+├── getset-common/           ← Shared library (DTOs, exceptions, Kafka event types)
+├── user-service/            ← Auth + user management (port 8081)
+├── property-service/        ← Property CRUD + geospatial search (port 8082)
+├── enquiry-service/         ← Enquiry lifecycle (port 8083)
+├── favorite-service/        ← Wishlists / saved properties (port 8084)
+├── message-service/         ← Threaded direct messaging (port 8085)
+├── notification-service/    ← Kafka consumer + email sender (port 8086)
 ├── api-gateway/             ← Spring Cloud Gateway (port 8090)
-│   └── src/main/java/com/getset/gateway/
-├── docker/                  ← Observability config files
-│   ├── prometheus.yml
-│   └── grafana/provisioning/datasources/prometheus.yml
-└── docker-compose.yml       ← All 10 services
+├── docker/                  ← Prometheus + Grafana config
+├── docker-compose.yml       ← Full infrastructure stack
+├── README.md                ← Project overview
+├── DEVELOPER_WALKTHROUGH.md ← Step-by-step onboarding guide ⭐
+└── .env.example             ← All required environment variables
 ```
 
 ---
 
-## `getset-backend` — Main Application
+## `getset-common` — Shared Library
 
-### Root
+> Must be built first (`mvn clean install`) before any service can compile.
+
+### `src/main/java/com/getset/common/`
+
+#### `dto/`
 
 | File | Role |
 |---|---|
-| `GetSetApplication.java` | Spring Boot entry point. Has `@SpringBootApplication` + `@EnableMongoAuditing` |
+| `ApiError.java` | Standard error response: `{status, error, message, timestamp}` |
+| `PageResponse<T>.java` | Generic paginated response wrapper: content, pageNumber, pageSize, totalElements, hasNext, hasPrevious |
+| `PropertySummaryDto.java` | Lightweight property snapshot used by enquiry-service and favorite-service (avoids circular Feign calls) |
+| `UserSummaryDto.java` | Lightweight user snapshot used by message-service and enquiry-service |
+
+#### `event/`
+
+| File | Role |
+|---|---|
+| `NotificationEvent.java` | Kafka event DTO. Fields: recipientId, recipientEmail, senderName, propertyTitle, message, eventType. Inner enum `EventType`: `ENQUIRY_RECEIVED`, `ENQUIRY_ACCEPTED`, `ENQUIRY_REJECTED`, `MESSAGE_RECEIVED` |
+
+#### `exception/`
+
+| File | Role |
+|---|---|
+| `GetSetException.java` | Base custom exception — all service-specific exceptions extend this |
+| `NotFoundException.java` | HTTP 404 — resource not found |
+| `ForbiddenException.java` | HTTP 403 — user doesn't own the resource |
+| `UnauthorizedException.java` | HTTP 401 — invalid or expired JWT |
 
 ---
 
-### `auth/` — Authentication & JWT
+## `user-service` — Authentication & User Management (Port 8081)
+
+### `src/main/java/com/getset/user/`
+
+#### Root
 
 | File | Role |
 |---|---|
-| `AuthController.java` | REST controller: `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` |
-| `AuthService.java` | Business logic: register (BCrypt hash + save), login (AuthenticationManager), refreshToken (validate + new access token), getCurrentUser. Has Resilience4j `@Retry`, `@CircuitBreaker`, `@RateLimiter` |
-| `dto/RegisterRequest.java` | Incoming: name, email, password, role, phone. Jakarta `@NotBlank` validation |
-| `dto/LoginRequest.java` | Incoming: email, password |
-| `dto/RefreshTokenRequest.java` | Incoming: refreshToken string |
-| `dto/AuthResponse.java` | Outgoing: accessToken, refreshToken, id, name, email, role |
-| `dto/UserResponse.java` | Outgoing: id, name, email, role, phone, createdAt (used by `GET /auth/me`) |
+| `UserServiceApplication.java` | Spring Boot entry point. `@SpringBootApplication` + `@EnableMongoAuditing` |
 
----
-
-### `user/` — User Data Layer
+#### `domain/`
 
 | File | Role |
 |---|---|
-| `UserDocument.java` | MongoDB document `@Document("users")`. Implements `UserDetails` for Spring Security. Fields: id, name, email, password (BCrypt), role, phone, createdAt, updatedAt |
-| `UserRepository.java` | `MongoRepository`. Custom methods: `findByEmail(String)`, `existsByEmail(String)` |
-| `UserMapper.java` | Static mapper: `UserDocument → UserResponse` |
+| `UserDocument.java` | MongoDB `@Document("users")`. Implements `UserDetails`. Fields: id, name, email, password (BCrypt), role, phone, createdAt, updatedAt |
+| `UserRepository.java` | `MongoRepository`. Methods: `findByEmail(String)`, `existsByEmail(String)` |
 | `Role.java` | Enum: `RENTER`, `OWNER`, `ADMIN` |
 
----
-
-### `property/` — Property Listings
+#### `security/`
 
 | File | Role |
 |---|---|
-| `PropertyDocument.java` | MongoDB document `@Document("properties")`. Has `GeoJsonPoint location` for geospatial queries |
-| `PropertyRepository.java` | `MongoRepository` + `PropertyRepositoryCustom`. Query: `findByIdAndOwnerId()` |
-| `PropertyRepositoryCustom.java` | Interface for custom query methods |
-| `PropertyRepositoryImpl.java` | `MongoTemplate`-based queries: advanced search (city, price range, bedrooms, furnished, pagination, sorting) |
-| `PropertyService.java` | Service interface |
-| `PropertyServiceImpl.java` | Business logic: create, update (ownership check `ForbiddenException`), delete, getById, search (paginated), getOwnerProperties, getNearby (2dsphere query). Has `@Retry`, `@CircuitBreaker` |
-| `PropertyController.java` | 7 REST endpoints. Returns `PageResponse<PropertyResponse>` for search |
-| `PropertyMapper.java` | Static mapper: `PropertyDocument → PropertyResponse` |
-| `Address.java` | Embedded value object: fullAddress, city, state, country, pincode |
-| `Location.java` | Embedded value object: GeoJSON Point (lat/lng) |
-| `PropertyType.java` | Enum: `APARTMENT`, `HOUSE`, `PG`, `VILLA` |
-| `dto/PropertyCreateRequest.java` | Incoming create payload |
-| `dto/PropertyUpdateRequest.java` | Incoming update payload |
-| `dto/PropertyResponse.java` | Full outgoing response |
-| `dto/PropertySummaryResponse.java` | Lightweight list item response |
-| `dto/AddressDto.java` | Address sub-DTO |
+| `JwtService.java` | JWT utility: `generateToken()` (embeds role claim), `generateRefreshToken()`, `extractUsername()`, `isTokenValid()` |
+| `JwtAuthenticationFilter.java` | `OncePerRequestFilter`: extracts Bearer token → validates → sets `SecurityContextHolder` |
 
----
-
-### `enquiry/` — Enquiry Management
+#### `config/`
 
 | File | Role |
 |---|---|
-| `EnquiryDocument.java` | MongoDB document: propertyId, ownerId, renterId, message, status, rejectionReason, timestamps |
-| `EnquiryRepository.java` | Custom queries: `findByPropertyId()`, `findByRenterId()`, `findByIdAndOwnerId()`, `countByOwnerIdAndStatus()` |
-| `EnquiryService.java` | Service interface |
-| `EnquiryServiceImpl.java` | Business logic: create (publishes `ENQUIRY_RECEIVED` Kafka event), getById, getByPropertyId, getByRenterId, update/accept/reject (publishes `ENQUIRY_ACCEPTED`/`ENQUIRY_REJECTED` Kafka event), delete, getStats |
-| `EnquiryController.java` | 7 REST endpoints |
+| `SecurityConfig.java` | Public routes: `/api/v1/auth/**`. All others require JWT. Wires in `JwtAuthenticationFilter` |
+| `AuthService.java` | Business logic: `register()` (BCrypt hash + uniqueness check), `login()` (AuthenticationManager), `refreshToken()`, `getCurrentUser()` |
+
+#### `api/`
+
+| File | Role |
+|---|---|
+| `AuthController.java` | `POST /auth/register`, `POST /auth/login`, `POST /auth/refresh`, `GET /auth/me` |
+| `InternalUserController.java` | `GET /internal/users/{id}` — returns `UserSummaryDto`. Called by other services via Feign. NOT exposed through gateway |
+
+#### `dto/`
+
+| File | Role |
+|---|---|
+| `RegisterRequest.java` | name, email, password, role, phone |
+| `LoginRequest.java` | email, password |
+| `RefreshTokenRequest.java` | refreshToken string |
+| `AuthResponse.java` | accessToken, refreshToken, userId, name, email, role |
+| `UserResponse.java` | Full user profile (name, email, role, phone, createdAt) |
+
+#### `exception/`
+
+| File | Role |
+|---|---|
+| `GlobalExceptionHandler.java` | `@RestControllerAdvice`. Returns consistent `ApiError` JSON for all exceptions |
+
+---
+
+## `property-service` — Property Management (Port 8082)
+
+### `src/main/java/com/getset/property/`
+
+#### Root
+
+| File | Role |
+|---|---|
+| `PropertyServiceApplication.java` | Spring Boot entry point |
+
+#### `domain/`
+
+| File | Role |
+|---|---|
+| `PropertyDocument.java` | MongoDB `@Document("properties")`. Key fields: ownerId, title, type, pricePerMonth, bedrooms, bathrooms, furnished, amenities, address (embedded), location (GeoJSON Point for `2dsphere` geospatial queries), photos, isActive |
+| `PropertyRepository.java` | `MongoRepository`. `findByIdAndOwnerId()` — used for ownership validation before updates/deletes |
+
+#### `api/`
+
+| File | Role |
+|---|---|
+| `PropertyController.java` | `POST /properties` (create), `GET /properties/{id}`, `GET /properties` (search with filters), `GET /properties/nearby` (geospatial), `PUT /properties/{id}` (owner-only update), `DELETE /properties/{id}` (owner-only delete), `GET /properties/owner/my-properties` |
+| `InternalPropertyController.java` | `GET /internal/properties/{id}` — returns `PropertySummaryDto`. Called by enquiry-service and favorite-service via Feign. NOT exposed through gateway |
+
+#### `client/`
+
+| File | Role |
+|---|---|
+| `UserServiceClient.java` | `@FeignClient(name="user-service")`. Calls `GET /internal/users/{id}` to fetch owner info for property responses |
+
+#### `security/`
+
+| File | Role |
+|---|---|
+| `JwtService.java` | Same JWT utility as user-service (copied for service independence) |
+| `JwtAuthenticationFilter.java` | Same filter pattern — validates Bearer token on each request |
+
+#### `config/`
+
+| File | Role |
+|---|---|
+| `SecurityConfig.java` | Public: `GET /properties/**`. Protected: all mutations (create/update/delete) |
+
+---
+
+## `enquiry-service` — Enquiry Lifecycle (Port 8083)
+
+### `src/main/java/com/getset/enquiry/`
+
+#### Root
+
+| File | Role |
+|---|---|
+| `EnquiryServiceApplication.java` | Spring Boot entry point |
+
+#### `domain/`
+
+| File | Role |
+|---|---|
 | `EnquiryStatus.java` | Enum: `PENDING`, `ACCEPTED`, `REJECTED` |
-| `dto/EnquiryRequest.java` | Incoming: propertyId, message |
-| `dto/EnquiryUpdateRequest.java` | Incoming: status, rejectionReason |
-| `dto/EnquiryResponse.java` | Outgoing: full enquiry with renter + owner info |
+| `EnquiryDocument.java` | MongoDB `@Document("enquiries")`. Fields: renterId, ownerId, propertyId, message, status, rejectionReason, createdAt, updatedAt |
+| `EnquiryRepository.java` | `findByPropertyId()` (owner views), `findByRenterId()` (renter views), `findByIdAndOwnerId()` (ownership check for updates) |
 
----
-
-### `favorite/` — Wishlist / Favorites
+#### `client/`
 
 | File | Role |
 |---|---|
-| `FavoriteDocument.java` | MongoDB document: renterId, propertyId, notes, timestamps |
-| `FavoriteRepository.java` | Custom queries: `findByRenterIdAndPropertyId()`, `existsByRenterIdAndPropertyId()`, `countByRenterId()` |
-| `FavoriteService.java` | Service interface |
-| `FavoriteServiceImpl.java` | Business logic: add, remove, getAll, check, count, updateNotes |
-| `FavoriteController.java` | 6 REST endpoints |
-| `dto/FavoriteResponse.java` | Outgoing: id, renterId, propertyId, notes, createdAt |
+| `PropertyServiceClient.java` | `@FeignClient`. Calls `GET /internal/properties/{id}` → validates property exists, gets ownerId + title |
+| `UserServiceClient.java` | `@FeignClient`. Calls `GET /internal/users/{id}` → gets renter/owner email for notification payloads |
 
----
-
-### `message/` — Direct Messaging
+#### `event/`
 
 | File | Role |
 |---|---|
-| `MessageDocument.java` | MongoDB document: threadId, senderId/Name/Email, recipientId/Name/Email, propertyId, enquiryId, content, read, createdAt |
-| `MessageRepository.java` | Queries by threadId, senderId, recipientId, unread status |
-| `MessageService.java` | Service interface |
-| `MessageServiceImpl.java` | Business logic: sendMessage (publishes `MESSAGE_RECEIVED` Kafka event), getConversation, getReceived, getSent, getUnread, getUnreadCount, markRead, markAllRead, getConversations |
-| `MessageController.java` | 10 REST endpoints |
-| `dto/MessageRequest.java` | Incoming: recipientId, propertyId, enquiryId, content, threadId |
-| `dto/MessageResponse.java` | Outgoing: full message with sender/recipient info |
-| `dto/ConversationResponse.java` | Outgoing: conversation thread summary |
+| `NotificationEventPublisher.java` | Wraps `KafkaTemplate.send("notification-events", recipientId, event)`. Uses `recipientId` as partition key for ordered delivery per user |
 
----
-
-### `notification/` — In-App Notifications + Email
+#### `api/`
 
 | File | Role |
 |---|---|
-| `NotificationDocument.java` | MongoDB document: recipientId/Email, subject, body, type, relatedEntityId, read, emailSent, emailSentError, createdAt |
-| `NotificationRepository.java` | Queries: `findByRecipientId()`, `findByRecipientIdAndRead()`, `countByRecipientIdAndRead()` |
-| `NotificationService.java` | Service interface |
-| `NotificationServiceImpl.java` | Persists notification document + sends email. Called by `NotificationEventConsumer` (async) |
-| `NotificationController.java` | 6 REST endpoints |
-| `EmailService.java` | Wraps `JavaMailSender`. Methods: `sendEnquiryReceivedEmail()`, `sendEnquiryAcceptedEmail()`, `sendEnquiryRejectedEmail()`, `sendEmail()` |
-| `dto/NotificationResponse.java` | Outgoing: notification details |
+| `EnquiryController.java` | `POST /enquiries` (create + publish `ENQUIRY_RECEIVED`), `GET /enquiries/{id}`, `GET /enquiries/property/{propertyId}`, `GET /enquiries/renter/my-enquiries`, `PUT /enquiries/{id}` (accept/reject + publish `ENQUIRY_ACCEPTED`/`ENQUIRY_REJECTED`), `DELETE /enquiries/{id}` |
 
----
-
-### `events/` — Kafka Event Infrastructure ✨ NEW
+#### `dto/`
 
 | File | Role |
 |---|---|
-| `NotificationEvent.java` | Event DTO. Inner enum `EventType`: `ENQUIRY_RECEIVED`, `ENQUIRY_ACCEPTED`, `ENQUIRY_REJECTED`, `MESSAGE_RECEIVED` |
-| `NotificationEventPublisher.java` | `@Component`. Wraps `KafkaTemplate.send()`. Uses `recipientId` as partition key. Has `published`/`failed` Prometheus counters |
-| `NotificationEventConsumer.java` | `@KafkaListener` on `notification-events` topic. Routes event to correct `NotificationService.notifyXxx()` method |
+| `EnquiryRequest.java` | propertyId, message |
+| `EnquiryUpdateRequest.java` | status (`ACCEPTED`/`REJECTED`), rejectionReason |
 
----
-
-### `search/` — Full-Text Search (Elasticsearch)
+#### `security/` + `config/`
 
 | File | Role |
 |---|---|
-| `controller/SearchController.java` | 8 REST endpoints: full-text search, suggestions, facets, trending, popular, admin sync, admin trending-by-city, admin statistics |
-| `service/PropertySearchService.java` | Search service interface |
-| `service/impl/PropertySearchServiceImpl.java` | Elasticsearch queries, Redis caching (5-level strategy), search analytics tracking, scheduled sync tasks |
-| `dto/SearchRequestDto.java` | Search parameters DTO |
-| `dto/SearchResponseDto.java` | Search results DTO |
+| `JwtService.java` | Same JWT utility (copied) |
+| `JwtAuthenticationFilter.java` | Same filter pattern |
+| `SecurityConfig.java` | All endpoints require auth |
 
 ---
 
-### `config/` — Spring Configuration
+## `favorite-service` — Wishlists (Port 8084)
+
+### `src/main/java/com/getset/favorite/`
+
+#### Root
 
 | File | Role |
 |---|---|
-| `SecurityConfig.java` | JWT filter chain. Public: GET properties, auth endpoints, Swagger. All else requires bearer token |
-| `AppConfig.java` | Beans: `BCryptPasswordEncoder`, `ModelMapper`, `AuthenticationManager` |
-| `CorsConfig.java` | CORS from `APP_CORS_ALLOWED_ORIGINS` env var |
-| `MongoConfig.java` | `MongoTemplate` bean, custom type converters |
-| `RedisConfig.java` | Redis connection factory + `RedisTemplate` |
-| `OpenApiConfig.java` | Swagger UI with Bearer token support |
-| `KafkaConfig.java` | ✨ NEW — Kafka topic (`notification-events`), idempotent producer, concurrent consumer factory |
-| `ObservabilityConfig.java` | ✨ NEW — Global metric tags (app, env, version) + 6 business counters for Prometheus/Grafana |
+| `FavoriteServiceApplication.java` | Spring Boot entry point |
 
----
-
-### `security/` — JWT Filter
+#### `domain/`
 
 | File | Role |
 |---|---|
-| `JwtService.java` | JWT utility: `generateToken()`, `generateRefreshToken()`, `extractUsername()`, `isTokenValid()` |
-| `JwtAuthenticationFilter.java` | `OncePerRequestFilter`: extracts token → validates → sets `SecurityContextHolder` |
+| `FavoriteDocument.java` | MongoDB `@Document("favorites")`. Fields: renterId, propertyId, **propertyTitle, propertyCity, pricePerMonth** (denormalized snapshot), notes, createdAt |
+| `FavoriteRepository.java` | `findByRenterId()`, `existsByRenterIdAndPropertyId()` (prevents duplicates), `deleteByRenterIdAndPropertyId()`, `countByRenterId()` |
 
----
-
-### `exception/` — Error Handling
+#### `client/`
 
 | File | Role |
 |---|---|
-| `GlobalExceptionHandler.java` | `@RestControllerAdvice`. Catches all exceptions, returns consistent JSON `{status, error, message, timestamp}` |
-| `GetSetException.java` | Base custom exception class |
-| `NotFoundException.java` | 404 Not Found |
-| `ForbiddenException.java` | 403 Forbidden (used when user doesn't own the resource) |
-| `UnauthorizedException.java` | 401 Unauthorized (used for invalid/expired tokens) |
+| `PropertyServiceClient.java` | `@FeignClient`. Calls `GET /internal/properties/{id}` — fetches property data when adding a new favorite (snapshot is stored, not re-fetched on reads) |
 
----
-
-### `common/` — Shared Utilities
+#### `api/`
 
 | File | Role |
 |---|---|
-| `ApiError.java` | Standard error response body DTO |
-| `PageResponse<T>.java` | Generic paginated response wrapper: content, page, size, totalElements, totalPages, hasNext, hasPrevious |
-| `NotFoundException.java` | Duplicate of `exception/NotFoundException` (kept for compatibility — consolidation recommended) |
+| `FavoriteController.java` | `POST /favorites/{propertyId}` (add + Feign call), `DELETE /favorites/{propertyId}` (remove), `GET /favorites` (list), `GET /favorites/check/{propertyId}` (boolean check), `GET /favorites/count` |
 
----
-
-### `cache/`
+#### `security/` + `config/`
 
 | File | Role |
 |---|---|
-| `CacheConstants.java` | String constants for all Redis cache keys / TTL values |
+| `JwtService.java` | Same JWT utility (copied) |
+| `JwtAuthenticationFilter.java` | Same filter pattern |
+| `SecurityConfig.java` | All endpoints require auth |
 
 ---
 
-### `util/` — Utilities
+## `message-service` — Direct Messaging (Port 8085)
+
+### `src/main/java/com/getset/message/`
+
+#### Root
 
 | File | Role |
 |---|---|
-| `AuditLogger.java` | Structured security audit logger: `logAuthenticationAttempt()`, `logRegistrationAttempt()`, `logResourceAccess()`, `logAuthorizationFailure()` |
-| `DateUtil.java` | Date/time formatting helpers |
-| `GeoUtil.java` | Geospatial calculation helpers (distance, bounding box) |
-| `StringUtil.java` | String manipulation helpers |
-| `ValidationUtil.java` | Input validation helpers |
+| `MessageServiceApplication.java` | Spring Boot entry point |
 
----
-
-### `src/main/resources/` — Configuration Files
+#### `domain/`
 
 | File | Role |
 |---|---|
-| `application.yml` | Base config: MongoDB, Redis, Elasticsearch, Kafka, JWT, Mail, Actuator, Zipkin, Prometheus, Resilience4j |
-| `application-dev.yml` | Dev overrides: DEBUG logging |
-| `application-prod.yml` | Prod overrides: WARN logging, 10% trace sampling |
-| `logback-spring.xml` | Log format: JSON (prod), pretty-print (dev) |
+| `MessageDocument.java` | MongoDB `@Document("messages")`. Key fields: `threadId` (format: `userId1_userId2_propertyId`), senderId, recipientId, propertyId, content, `read` (boolean), createdAt |
+| `MessageRepository.java` | `findByThreadId()` (full thread), `findByRecipientId()`, `findBySenderId()`, `countByRecipientIdAndReadFalse()` |
 
----
-
-## Tests — `src/test/java/com/getset/`
-
-| File | Type | Tests |
-|---|---|---|
-| `security/JwtServiceTest.java` | Unit (Mockito) | 5 tests — token gen, expiry, validation, username extraction |
-| `auth/AuthServiceTest.java` | Unit (Mockito) | 8 tests — register, login, refresh, getCurrentUser, error paths |
-| `auth/AuthControllerTest.java` | MockMvc (web layer) | 2 tests — HTTP status codes, JSON response structure |
-| `property/PropertyServiceImplTest.java` | Unit (Mockito) | 5 tests — CRUD, ownership guard (ForbiddenException), not-found |
-
----
-
-## `api-gateway/` — Spring Cloud Gateway (Port 8090)
+#### `client/`
 
 | File | Role |
 |---|---|
-| `ApiGatewayApplication.java` | Entry point |
-| `config/GatewayConfig.java` | 4 routes (auth, properties, search, default). Rate limiters via Redis (20/min auth, 60/min API). Circuit breakers per route. CORS handled here |
-| `controller/FallbackController.java` | Returns clean `503 Service Unavailable` JSON when backend circuit breaker opens |
-| `src/main/resources/application.yml` | Port 8090, Redis config, Resilience4j circuit breaker params, Zipkin tracing |
-| `Dockerfile` | Alpine JRE 21 — minimal container image |
-| `pom.xml` | Spring Cloud Gateway, Redis reactive, Resilience4j, Actuator, Micrometer Tracing |
+| `UserServiceClient.java` | `@FeignClient`. Fetches sender/recipient display names from user-service |
+
+#### `event/`
+
+| File | Role |
+|---|---|
+| `NotificationEventPublisher.java` | Publishes `MESSAGE_RECEIVED` event to Kafka `notification-events` topic |
+
+#### `api/`
+
+| File | Role |
+|---|---|
+| `MessageController.java` | `POST /messages` (send + publish event), `GET /messages/thread/{threadId}`, `GET /messages/conversations` (grouped threads), `GET /messages/unread`, `GET /messages/unread/count`, `PUT /messages/{id}/read`, `PUT /messages/read-all` |
+
+#### `security/` + `config/`
+
+| File | Role |
+|---|---|
+| `JwtService.java` | Same JWT utility (copied) |
+| `JwtAuthenticationFilter.java` | Same filter pattern |
+| `SecurityConfig.java` | All endpoints require auth |
+
+---
+
+## `notification-service` — Kafka Consumer + Email (Port 8086)
+
+### `src/main/java/com/getset/notification/`
+
+#### Root
+
+| File | Role |
+|---|---|
+| `NotificationServiceApplication.java` | Spring Boot entry point |
+
+#### `consumer/`
+
+| File | Role |
+|---|---|
+| `NotificationEventConsumer.java` | `@KafkaListener(topics="notification-events", groupId="notification-group")`. Deserializes `NotificationEvent` JSON → routes to `EmailService` based on `event.getType()` |
+
+#### `service/`
+
+| File | Role |
+|---|---|
+| `EmailService.java` | Wraps `JavaMailSender`. Methods: `sendEnquiryReceivedEmail()`, `sendEnquiryAcceptedEmail()`, `sendEnquiryRejectedEmail()`, `sendMessageReceivedEmail()` — each builds a formatted email body |
+
+---
+
+## `api-gateway` — Entry Point (Port 8090)
+
+### `src/main/java/com/getset/gateway/`
+
+#### Root
+
+| File | Role |
+|---|---|
+| `ApiGatewayApplication.java` | Spring Boot entry point |
+
+#### `config/`
+
+| File | Role |
+|---|---|
+| `GatewayConfig.java` | Route definitions: `/api/v1/auth/**` → user-service, `/api/v1/properties/**` → property-service, `/api/v1/enquiries/**` → enquiry-service, `/api/v1/favorites/**` → favorite-service, `/api/v1/messages/**` → message-service. Redis rate limiters per route. Resilience4j circuit breakers per route. CORS headers |
+
+#### `controller/`
+
+| File | Role |
+|---|---|
+| `FallbackController.java` | `GET /fallback` — returns `503 Service Unavailable` JSON when a circuit breaker opens |
+
+#### `resources/`
+
+| File | Role |
+|---|---|
+| `application.yml` | Port 8090, service URLs, Redis config, Resilience4j thresholds, Zipkin config |
 
 ---
 
@@ -265,11 +356,10 @@ getSet/backend/
 
 | File | Role |
 |---|---|
-| `docker-compose.yml` | 10 services: MongoDB, Redis, Elasticsearch, Zookeeper, Kafka, Zipkin, Prometheus, Grafana, api-gateway, getset-backend |
-| `docker/prometheus.yml` | Scrapes `/api/v1/actuator/prometheus` every 15s |
-| `docker/grafana/provisioning/datasources/prometheus.yml` | Auto-connects Grafana to Prometheus |
-| `getset-backend/Dockerfile` | Multi-stage build → runs `getset-backend-1.0.0.jar` |
-| `.env.example` | Template for all required environment variables |
+| `docker-compose.yml` | Spins up: MongoDB, Zookeeper, Kafka, Zipkin, Prometheus, Grafana |
+| `docker/prometheus.yml` | Scrapes each service's `/actuator/prometheus` every 15s |
+| `docker/grafana/provisioning/datasources/prometheus.yml` | Auto-connects Grafana to Prometheus datasource |
+| `.env.example` | Template with all required environment variables and descriptions |
 
 ---
 
@@ -277,11 +367,28 @@ getSet/backend/
 
 | Metric | Count |
 |---|---|
-| Java source files (monolith) | **93** |
-| Java source files (gateway) | **3** |
-| REST Endpoints | **35+** (monolith) + **4 routes** (gateway) |
+| Microservices | **7** (user, property, enquiry, favorite, message, notification + api-gateway) |
+| Shared library | **1** (getset-common) |
+| Java source files (total) | **~70** across all services |
+| REST Endpoints | **35+** |
 | Kafka Topics | **1** (`notification-events`, 3 partitions) |
 | MongoDB Collections | **6** (users, properties, enquiries, favorites, messages, notifications) |
-| Docker Services | **10** |
-| Unit Tests | **20** (4 test classes) |
-| Custom Prometheus Metrics | **8** business counters |
+| Docker Compose Services | **6** infrastructure services |
+| Feign Client calls | **6** inter-service call paths |
+
+---
+
+## Inter-Service Dependency Map
+
+```
+notification-service
+        ▲ Kafka
+        │
+enquiry-service ──Feign──► property-service ──Feign──► user-service
+message-service ──Feign─────────────────────────────► user-service
+favorite-service ─Feign──► property-service
+enquiry-service ──Feign──► user-service
+
+api-gateway routes to: all 6 business services
+getset-common: imported by all services (compile-time dependency)
+```

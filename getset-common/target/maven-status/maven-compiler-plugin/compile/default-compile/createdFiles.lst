@@ -1,0 +1,15 @@
+com\getset\common\dto\PageResponse.class
+com\getset\common\event\NotificationEvent.class
+com\getset\common\event\NotificationEvent$EventType.class
+com\getset\common\dto\ApiError$ApiErrorBuilder.class
+com\getset\common\dto\ApiError.class
+com\getset\common\dto\UserSummaryDto.class
+com\getset\common\dto\PropertySummaryDto.class
+com\getset\common\exception\NotFoundException.class
+com\getset\common\exception\UnauthorizedException.class
+com\getset\common\exception\ForbiddenException.class
+com\getset\common\dto\PropertySummaryDto$PropertySummaryDtoBuilder.class
+com\getset\common\event\NotificationEvent$NotificationEventBuilder.class
+com\getset\common\dto\PageResponse$PageResponseBuilder.class
+com\getset\common\dto\UserSummaryDto$UserSummaryDtoBuilder.class
+com\getset\common\exception\GetSetException.class
