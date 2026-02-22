@@ -1,6 +1,7 @@
 package com.getset.property;
 
 import com.getset.common.NotFoundException;
+import com.getset.exception.ForbiddenException;
 import com.getset.property.dto.PropertyResponse;
 import com.getset.property.dto.PropertySummaryResponse;
 import org.junit.jupiter.api.Test;
@@ -66,7 +67,7 @@ class PropertyServiceImplTest {
     }
 
     @Test
-    void deactivateProperty_whenNotOwner_throwsNotFoundException() {
+    void deactivateProperty_whenNotOwner_throwsForbiddenException() {
         String id = "prop-123";
         String ownerId = "owner-1";
         PropertyDocument doc = PropertyDocument.builder()
@@ -80,7 +81,7 @@ class PropertyServiceImplTest {
         when(propertyRepository.findById(id)).thenReturn(Optional.of(doc));
 
         assertThatThrownBy(() -> propertyService.deactivateProperty(id, ownerId))
-                .isInstanceOf(NotFoundException.class)
+                .isInstanceOf(ForbiddenException.class)
                 .hasMessageContaining("Not authorized to delete this property");
 
         verify(propertyRepository).findById(id);

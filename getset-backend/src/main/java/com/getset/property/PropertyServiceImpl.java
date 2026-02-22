@@ -1,6 +1,7 @@
 package com.getset.property;
 
 import com.getset.common.NotFoundException;
+import com.getset.exception.ForbiddenException;
 import com.getset.property.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -11,7 +12,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class PropertyServiceImpl implements PropertyService {
-    
+
     private final PropertyRepository propertyRepository;
     private final PropertyMapper propertyMapper;
 
@@ -26,20 +27,28 @@ public class PropertyServiceImpl implements PropertyService {
     public PropertyResponse updateProperty(String id, PropertyUpdateRequest request, String ownerId) {
         PropertyDocument doc = propertyRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Property not found"));
-        
+
         if (!doc.getOwnerId().equals(ownerId)) {
-            throw new NotFoundException("Not authorized to update this property");
+            throw new ForbiddenException("Not authorized to update this property");
         }
-        
-        if (request.getTitle() != null) doc.setTitle(request.getTitle());
-        if (request.getDescription() != null) doc.setDescription(request.getDescription());
-        if (request.getType() != null) doc.setType(request.getType());
-        if (request.getPricePerMonth() != null) doc.setPricePerMonth(request.getPricePerMonth());
-        if (request.getBedrooms() != null) doc.setBedrooms(request.getBedrooms());
-        if (request.getBathrooms() != null) doc.setBathrooms(request.getBathrooms());
-        if (request.getFurnished() != null) doc.setFurnished(request.getFurnished());
-        if (request.getAmenities() != null) doc.setAmenities(request.getAmenities());
-        
+
+        if (request.getTitle() != null)
+            doc.setTitle(request.getTitle());
+        if (request.getDescription() != null)
+            doc.setDescription(request.getDescription());
+        if (request.getType() != null)
+            doc.setType(request.getType());
+        if (request.getPricePerMonth() != null)
+            doc.setPricePerMonth(request.getPricePerMonth());
+        if (request.getBedrooms() != null)
+            doc.setBedrooms(request.getBedrooms());
+        if (request.getBathrooms() != null)
+            doc.setBathrooms(request.getBathrooms());
+        if (request.getFurnished() != null)
+            doc.setFurnished(request.getFurnished());
+        if (request.getAmenities() != null)
+            doc.setAmenities(request.getAmenities());
+
         if (request.getAddress() != null) {
             doc.setAddress(Address.builder()
                     .fullAddress(request.getAddress().getFullAddress())
@@ -49,14 +58,16 @@ public class PropertyServiceImpl implements PropertyService {
                     .pincode(request.getAddress().getPincode())
                     .build());
         }
-        
+
         if (request.getLat() != null && request.getLng() != null) {
             doc.setLocation(Location.fromCoordinates(request.getLng(), request.getLat()));
         }
-        
-        if (request.getPhotos() != null) doc.setPhotos(request.getPhotos());
-        if (request.getIsActive() != null) doc.setIsActive(request.getIsActive());
-        
+
+        if (request.getPhotos() != null)
+            doc.setPhotos(request.getPhotos());
+        if (request.getIsActive() != null)
+            doc.setIsActive(request.getIsActive());
+
         propertyRepository.save(doc);
         return propertyMapper.toResponse(doc);
     }
@@ -65,11 +76,11 @@ public class PropertyServiceImpl implements PropertyService {
     public void deactivateProperty(String id, String ownerId) {
         PropertyDocument doc = propertyRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Property not found"));
-        
+
         if (!doc.getOwnerId().equals(ownerId)) {
-            throw new NotFoundException("Not authorized to delete this property");
+            throw new ForbiddenException("Not authorized to delete this property");
         }
-        
+
         doc.setIsActive(false);
         propertyRepository.save(doc);
     }
@@ -91,7 +102,7 @@ public class PropertyServiceImpl implements PropertyService {
             PropertyType type,
             int page,
             int size) {
-        
+
         List<PropertyDocument> docs = propertyRepository.searchProperties(
                 city, minPrice, maxPrice, minBedrooms, furnished, type, page, size);
         return docs.stream()

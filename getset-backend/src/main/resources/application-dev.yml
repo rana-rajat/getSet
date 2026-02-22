@@ -1,0 +1,16 @@
+# Development Profile Configuration
+# Activate with: --spring.profiles.active=dev
+
+spring:
+  security:
+    jwt:
+      secret-key: ${JWT_SECRET:ZGV2LXNlY3JldC1rZXktZm9yLWxvY2FsLWRldmVsb3BtZW50LW9ubHk=}
+
+logging:
+  level:
+    "[com.getset]": DEBUG
+    "[org.springframework.security]": DEBUG
+    "[org.springframework.data.mongodb]": DEBUG
+    "[springdoc]": TRACE
+    "[org.springdoc]": TRACE
+    "[org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping]": DEBUG

@@ -24,13 +24,9 @@ spring:
           min-idle: 0
           max-wait: -1ms
 
-  jwt:
-    secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
-    expiration: 86400000  # 24 hours in milliseconds
-
   security:
     jwt:
-      secret-key: ${JWT_SECRET:your-256-bit-secret-key-change-this-in-production-minimum-32-characters}
+      secret-key: ${JWT_SECRET}
       expiration: 86400000  # 24 hours in milliseconds
 
   mail:
@@ -86,15 +82,12 @@ springdoc:
 
 logging:
   level:
-    "[com.getset]": DEBUG
-    "[org.springframework.security]": DEBUG
-    "[org.springframework.data.mongodb]": DEBUG
+    "[com.getset]": INFO
+    "[org.springframework.security]": WARN
+    "[org.springframework.data.mongodb]": WARN
     "[io.github.resilience4j]": INFO
-    "[springdoc]": TRACE
-    "[org.springdoc]": TRACE
-    "[org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping]": DEBUG
-    "[org.springframework.web.servlet.DispatcherServlet]": DEBUG
-    "[org.springframework.web.servlet.mvc.method.annotation.RequestResponseBodyMethodProcessor]": DEBUG
+    "[springdoc]": WARN
+    "[org.springdoc]": WARN
 
 # Resilience4J Configuration
 resilience4j:
