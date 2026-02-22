@@ -28,6 +28,7 @@ spring:
     jwt:
       secret-key: ${JWT_SECRET}
       expiration: 86400000  # 24 hours in milliseconds
+      refresh-expiration: 604800000 # 7 days in milliseconds
 
   mail:
     host: ${MAIL_HOST:smtp.gmail.com}
@@ -130,6 +131,13 @@ resilience4j:
       authService:
         timeoutDuration: 5000
         cancelRunningFuture: true
+
+  ratelimiter:
+    instances:
+      authService:
+        limitForPeriod: 10
+        limitRefreshPeriod: 1m
+        timeoutDuration: 500ms
 
 
       propertyService:

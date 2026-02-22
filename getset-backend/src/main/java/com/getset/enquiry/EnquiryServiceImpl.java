@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.HashMap;
@@ -23,183 +24,187 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class EnquiryServiceImpl implements EnquiryService {
-    
-    private final EnquiryRepository enquiryRepository;
-    private final PropertyRepository propertyRepository;
-    private final UserRepository userRepository;
-    
-    @Override
-    public EnquiryResponse createEnquiry(EnquiryRequest request, String renterId) {
-        log.info("Creating enquiry for property {} by renter {}", request.getPropertyId(), renterId);
-        
-        // Verify property exists
-        propertyRepository.findById(request.getPropertyId())
-                .orElseThrow(() -> new NotFoundException("Property not found with ID: " + request.getPropertyId()));
-        
-        // Get renter info
-        UserDocument renter = userRepository.findById(renterId)
-                .orElseThrow(() -> new NotFoundException("Renter not found"));
-        
-        // Create enquiry
-        EnquiryDocument enquiry = EnquiryDocument.builder()
-                .propertyId(request.getPropertyId())
-                .renterId(renterId)
-                .message(request.getMessage())
-                .status(EnquiryStatus.PENDING)
-                .build();
-        
-        EnquiryDocument saved = enquiryRepository.save(enquiry);
-        log.info("Enquiry created with ID: {}", saved.getId());
-        
-        return mapToResponse(saved, renter, null);
-    }
-    
-    @Override
-    public EnquiryResponse getEnquiryById(String id) {
-        log.info("Fetching enquiry with ID: {}", id);
-        
-        EnquiryDocument enquiry = enquiryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Enquiry not found with ID: " + id));
-        
-        UserDocument renter = userRepository.findById(enquiry.getRenterId())
-                .orElseThrow(() -> new NotFoundException("Renter not found"));
-        
-        UserDocument owner = userRepository.findById(enquiry.getOwnerId())
-                .orElseThrow(() -> new NotFoundException("Owner not found"));
-        
-        return mapToResponse(enquiry, renter, owner);
-    }
-    
-    @Override
-    public PageResponse<EnquiryResponse> getEnquiriesByPropertyId(String propertyId, String ownerId, Pageable pageable) {
-        log.info("Fetching enquiries for property {} by owner {}", propertyId, ownerId);
-        
-        // Verify owner owns this property
-        propertyRepository.findByIdAndOwnerId(propertyId, ownerId)
-                .orElseThrow(() -> new NotFoundException("You don't have access to this property"));
-        
-        Page<EnquiryDocument> page = enquiryRepository.findByPropertyId(propertyId, pageable);
-        
-        var content = page.getContent().stream()
-                .map(enquiry -> {
-                    UserDocument renter = userRepository.findById(enquiry.getRenterId())
-                            .orElseThrow(() -> new NotFoundException("Renter not found"));
-                    return mapToResponse(enquiry, renter, null);
-                })
-                .collect(Collectors.toList());
-        
-        return PageResponse.<EnquiryResponse>builder()
-                .content(content)
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .hasNext(!page.isLast())
-                .hasPrevious(page.getNumber() > 0)
-                .build();
-    }
-    
-    @Override
-    public PageResponse<EnquiryResponse> getEnquiriesByRenterId(String renterId, Pageable pageable) {
-        log.info("Fetching enquiries by renter {}", renterId);
-        
-        Page<EnquiryDocument> page = enquiryRepository.findByRenterId(renterId, pageable);
-        
-        var content = page.getContent().stream()
-                .map(enquiry -> {
-                    UserDocument renterUser = userRepository.findById(enquiry.getRenterId())
-                            .orElseThrow(() -> new NotFoundException("Renter not found"));
-                    UserDocument ownerUser = userRepository.findById(enquiry.getOwnerId())
-                            .orElseThrow(() -> new NotFoundException("Owner not found"));
-                    return mapToResponse(enquiry, renterUser, ownerUser);
-                })
-                .collect(Collectors.toList());
-        
-        return PageResponse.<EnquiryResponse>builder()
-                .content(content)
-                .pageNumber(page.getNumber())
-                .pageSize(page.getSize())
-                .totalElements(page.getTotalElements())
-                .totalPages(page.getTotalPages())
-                .hasNext(!page.isLast())
-                .hasPrevious(page.getNumber() > 0)
-                .build();
-    }
-    
-    @Override
-    public EnquiryResponse updateEnquiry(String id, EnquiryUpdateRequest request, String ownerId) {
-        log.info("Updating enquiry {} by owner {}", id, ownerId);
-        
-        EnquiryDocument enquiry = enquiryRepository.findByIdAndOwnerId(id, ownerId)
-                .orElseThrow(() -> new NotFoundException("Enquiry not found or you don't have access"));
-        
-        // Update status
-        EnquiryStatus newStatus = EnquiryStatus.valueOf(request.getStatus().toUpperCase());
-        enquiry.setStatus(newStatus);
-        enquiry.setRejectionReason(request.getRejectionReason());
-        enquiry.setUpdatedAt(Instant.now());
-        
-        EnquiryDocument updated = enquiryRepository.save(enquiry);
-        log.info("Enquiry {} updated with status {}", id, newStatus);
-        
-        UserDocument renter = userRepository.findById(updated.getRenterId())
-                .orElseThrow(() -> new NotFoundException("Renter not found"));
-        
-        UserDocument owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new NotFoundException("Owner not found"));
-        
-        return mapToResponse(updated, renter, owner);
-    }
-    
-    @Override
-    public void deleteEnquiry(String id, String userId) {
-        log.info("Deleting enquiry {} by user {}", id, userId);
-        
-        EnquiryDocument enquiry = enquiryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Enquiry not found"));
-        
-        // Only renter or owner can delete
-        if (!enquiry.getRenterId().equals(userId) && !enquiry.getOwnerId().equals(userId)) {
-            throw new IllegalArgumentException("You don't have permission to delete this enquiry");
+
+        private final EnquiryRepository enquiryRepository;
+        private final PropertyRepository propertyRepository;
+        private final UserRepository userRepository;
+
+        @Override
+        @Transactional
+        public EnquiryResponse createEnquiry(EnquiryRequest request, String renterId) {
+                log.info("Creating enquiry for property {} by renter {}", request.getPropertyId(), renterId);
+
+                // Verify property exists
+                propertyRepository.findById(request.getPropertyId())
+                                .orElseThrow(() -> new NotFoundException(
+                                                "Property not found with ID: " + request.getPropertyId()));
+
+                // Get renter info
+                UserDocument renter = userRepository.findById(renterId)
+                                .orElseThrow(() -> new NotFoundException("Renter not found"));
+
+                // Create enquiry
+                EnquiryDocument enquiry = EnquiryDocument.builder()
+                                .propertyId(request.getPropertyId())
+                                .renterId(renterId)
+                                .message(request.getMessage())
+                                .status(EnquiryStatus.PENDING)
+                                .build();
+
+                EnquiryDocument saved = enquiryRepository.save(enquiry);
+                log.info("Enquiry created with ID: {}", saved.getId());
+
+                return mapToResponse(saved, renter, null);
         }
-        
-        enquiryRepository.deleteById(id);
-        log.info("Enquiry {} deleted", id);
-    }
-    
-    @Override
-    public Object getEnquiryStats(String ownerId) {
-        log.info("Fetching enquiry stats for owner {}", ownerId);
-        
-        long totalEnquiries = enquiryRepository.countByOwnerId(ownerId);
-        long pendingEnquiries = enquiryRepository.countByOwnerIdAndStatus(ownerId, EnquiryStatus.PENDING);
-        long acceptedEnquiries = enquiryRepository.countByOwnerIdAndStatus(ownerId, EnquiryStatus.ACCEPTED);
-        long rejectedEnquiries = enquiryRepository.countByOwnerIdAndStatus(ownerId, EnquiryStatus.REJECTED);
-        
-        Map<String, Object> stats = new HashMap<>();
-        stats.put("totalEnquiries", totalEnquiries);
-        stats.put("pendingEnquiries", pendingEnquiries);
-        stats.put("acceptedEnquiries", acceptedEnquiries);
-        stats.put("rejectedEnquiries", rejectedEnquiries);
-        
-        return stats;
-    }
-    
-    private EnquiryResponse mapToResponse(EnquiryDocument enquiry, UserDocument renter, UserDocument owner) {
-        return EnquiryResponse.builder()
-                .id(enquiry.getId())
-                .propertyId(enquiry.getPropertyId())
-                .renterId(enquiry.getRenterId())
-                .renterName(renter.getName())
-                .renterEmail(renter.getEmail())
-                .renterPhone(renter.getPhone())
-                .ownerId(enquiry.getOwnerId())
-                .ownerName(owner != null ? owner.getName() : "N/A")
-                .message(enquiry.getMessage())
-                .status(enquiry.getStatus())
-                .rejectionReason(enquiry.getRejectionReason())
-                .createdAt(enquiry.getCreatedAt())
-                .updatedAt(enquiry.getUpdatedAt())
-                .build();
-    }
+
+        @Override
+        public EnquiryResponse getEnquiryById(String id) {
+                log.info("Fetching enquiry with ID: {}", id);
+
+                EnquiryDocument enquiry = enquiryRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Enquiry not found with ID: " + id));
+
+                UserDocument renter = userRepository.findById(enquiry.getRenterId())
+                                .orElseThrow(() -> new NotFoundException("Renter not found"));
+
+                UserDocument owner = userRepository.findById(enquiry.getOwnerId())
+                                .orElseThrow(() -> new NotFoundException("Owner not found"));
+
+                return mapToResponse(enquiry, renter, owner);
+        }
+
+        @Override
+        public PageResponse<EnquiryResponse> getEnquiriesByPropertyId(String propertyId, String ownerId,
+                        Pageable pageable) {
+                log.info("Fetching enquiries for property {} by owner {}", propertyId, ownerId);
+
+                // Verify owner owns this property
+                propertyRepository.findByIdAndOwnerId(propertyId, ownerId)
+                                .orElseThrow(() -> new NotFoundException("You don't have access to this property"));
+
+                Page<EnquiryDocument> page = enquiryRepository.findByPropertyId(propertyId, pageable);
+
+                var content = page.getContent().stream()
+                                .map(enquiry -> {
+                                        UserDocument renter = userRepository.findById(enquiry.getRenterId())
+                                                        .orElseThrow(() -> new NotFoundException("Renter not found"));
+                                        return mapToResponse(enquiry, renter, null);
+                                })
+                                .collect(Collectors.toList());
+
+                return PageResponse.<EnquiryResponse>builder()
+                                .content(content)
+                                .pageNumber(page.getNumber())
+                                .pageSize(page.getSize())
+                                .totalElements(page.getTotalElements())
+                                .totalPages(page.getTotalPages())
+                                .hasNext(!page.isLast())
+                                .hasPrevious(page.getNumber() > 0)
+                                .build();
+        }
+
+        @Override
+        public PageResponse<EnquiryResponse> getEnquiriesByRenterId(String renterId, Pageable pageable) {
+                log.info("Fetching enquiries by renter {}", renterId);
+
+                Page<EnquiryDocument> page = enquiryRepository.findByRenterId(renterId, pageable);
+
+                var content = page.getContent().stream()
+                                .map(enquiry -> {
+                                        UserDocument renterUser = userRepository.findById(enquiry.getRenterId())
+                                                        .orElseThrow(() -> new NotFoundException("Renter not found"));
+                                        UserDocument ownerUser = userRepository.findById(enquiry.getOwnerId())
+                                                        .orElseThrow(() -> new NotFoundException("Owner not found"));
+                                        return mapToResponse(enquiry, renterUser, ownerUser);
+                                })
+                                .collect(Collectors.toList());
+
+                return PageResponse.<EnquiryResponse>builder()
+                                .content(content)
+                                .pageNumber(page.getNumber())
+                                .pageSize(page.getSize())
+                                .totalElements(page.getTotalElements())
+                                .totalPages(page.getTotalPages())
+                                .hasNext(!page.isLast())
+                                .hasPrevious(page.getNumber() > 0)
+                                .build();
+        }
+
+        @Override
+        @Transactional
+        public EnquiryResponse updateEnquiry(String id, EnquiryUpdateRequest request, String ownerId) {
+                log.info("Updating enquiry {} by owner {}", id, ownerId);
+
+                EnquiryDocument enquiry = enquiryRepository.findByIdAndOwnerId(id, ownerId)
+                                .orElseThrow(() -> new NotFoundException("Enquiry not found or you don't have access"));
+
+                // Update status
+                EnquiryStatus newStatus = EnquiryStatus.valueOf(request.getStatus().toUpperCase());
+                enquiry.setStatus(newStatus);
+                enquiry.setRejectionReason(request.getRejectionReason());
+                enquiry.setUpdatedAt(Instant.now());
+
+                EnquiryDocument updated = enquiryRepository.save(enquiry);
+                log.info("Enquiry {} updated with status {}", id, newStatus);
+
+                UserDocument renter = userRepository.findById(updated.getRenterId())
+                                .orElseThrow(() -> new NotFoundException("Renter not found"));
+
+                UserDocument owner = userRepository.findById(ownerId)
+                                .orElseThrow(() -> new NotFoundException("Owner not found"));
+
+                return mapToResponse(updated, renter, owner);
+        }
+
+        @Override
+        public void deleteEnquiry(String id, String userId) {
+                log.info("Deleting enquiry {} by user {}", id, userId);
+
+                EnquiryDocument enquiry = enquiryRepository.findById(id)
+                                .orElseThrow(() -> new NotFoundException("Enquiry not found"));
+
+                // Only renter or owner can delete
+                if (!enquiry.getRenterId().equals(userId) && !enquiry.getOwnerId().equals(userId)) {
+                        throw new IllegalArgumentException("You don't have permission to delete this enquiry");
+                }
+
+                enquiryRepository.deleteById(id);
+                log.info("Enquiry {} deleted", id);
+        }
+
+        @Override
+        public Object getEnquiryStats(String ownerId) {
+                log.info("Fetching enquiry stats for owner {}", ownerId);
+
+                long totalEnquiries = enquiryRepository.countByOwnerId(ownerId);
+                long pendingEnquiries = enquiryRepository.countByOwnerIdAndStatus(ownerId, EnquiryStatus.PENDING);
+                long acceptedEnquiries = enquiryRepository.countByOwnerIdAndStatus(ownerId, EnquiryStatus.ACCEPTED);
+                long rejectedEnquiries = enquiryRepository.countByOwnerIdAndStatus(ownerId, EnquiryStatus.REJECTED);
+
+                Map<String, Object> stats = new HashMap<>();
+                stats.put("totalEnquiries", totalEnquiries);
+                stats.put("pendingEnquiries", pendingEnquiries);
+                stats.put("acceptedEnquiries", acceptedEnquiries);
+                stats.put("rejectedEnquiries", rejectedEnquiries);
+
+                return stats;
+        }
+
+        private EnquiryResponse mapToResponse(EnquiryDocument enquiry, UserDocument renter, UserDocument owner) {
+                return EnquiryResponse.builder()
+                                .id(enquiry.getId())
+                                .propertyId(enquiry.getPropertyId())
+                                .renterId(enquiry.getRenterId())
+                                .renterName(renter.getName())
+                                .renterEmail(renter.getEmail())
+                                .renterPhone(renter.getPhone())
+                                .ownerId(enquiry.getOwnerId())
+                                .ownerName(owner != null ? owner.getName() : "N/A")
+                                .message(enquiry.getMessage())
+                                .status(enquiry.getStatus())
+                                .rejectionReason(enquiry.getRejectionReason())
+                                .createdAt(enquiry.getCreatedAt())
+                                .updatedAt(enquiry.getUpdatedAt())
+                                .build();
+        }
 }

@@ -42,8 +42,8 @@
         <appender-ref ref="ASYNC_FILE"/>
     </root>
 
-    <!-- Application logger with DEBUG level -->
-    <logger name="com.getset" level="DEBUG"/>
+    <!-- Application logger with INFO level -->
+    <logger name="com.getset" level="INFO"/>
     
     <!-- Security logger for sensitive events -->
     <logger name="com.getset.auth" level="INFO"/>

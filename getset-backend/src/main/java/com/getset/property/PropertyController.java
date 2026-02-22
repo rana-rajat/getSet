@@ -11,16 +11,21 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
+import com.getset.common.PageResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
+@Tag(name = "Properties", description = "Property management endpoints")
 @RequestMapping(AppConstants.API_BASE_PATH + "/properties")
 @RequiredArgsConstructor
 public class PropertyController {
-    
+
     private final PropertyService propertyService;
 
     @PostMapping
     @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Create a new property")
     public ResponseEntity<PropertyResponse> createProperty(
             @Valid @RequestBody PropertyCreateRequest request,
             Authentication authentication) {
@@ -30,6 +35,7 @@ public class PropertyController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Update an existing property")
     public ResponseEntity<PropertyResponse> updateProperty(
             @PathVariable String id,
             @Valid @RequestBody PropertyUpdateRequest request,
@@ -40,6 +46,7 @@ public class PropertyController {
 
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Deactivate a property")
     public ResponseEntity<Void> deleteProperty(
             @PathVariable String id,
             Authentication authentication) {
@@ -48,13 +55,15 @@ public class PropertyController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Get property by ID")
     public ResponseEntity<PropertyResponse> getProperty(@PathVariable String id) {
         PropertyResponse response = propertyService.getProperty(id);
         return ResponseEntity.ok(response);
     }
 
     @GetMapping
-    public ResponseEntity<List<PropertySummaryResponse>> searchProperties(
+    @Operation(summary = "Search properties with pagination and filters")
+    public ResponseEntity<PageResponse<PropertySummaryResponse>> searchProperties(
             @RequestParam(required = false) String city,
             @RequestParam(required = false) Double minPrice,
             @RequestParam(required = false) Double maxPrice,
@@ -63,24 +72,26 @@ public class PropertyController {
             @RequestParam(required = false) PropertyType type,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size) {
-        
-        List<PropertySummaryResponse> results = propertyService.searchProperties(
+
+        PageResponse<PropertySummaryResponse> results = propertyService.searchProperties(
                 city, minPrice, maxPrice, minBedrooms, furnished, type, page, size);
         return ResponseEntity.ok(results);
     }
 
     @GetMapping("/nearby")
+    @Operation(summary = "Find nearby properties")
     public ResponseEntity<List<PropertySummaryResponse>> findNearby(
             @RequestParam double lat,
             @RequestParam double lng,
             @RequestParam(defaultValue = "5") double radiusKm) {
-        
+
         List<PropertySummaryResponse> results = propertyService.findNearby(lat, lng, radiusKm);
         return ResponseEntity.ok(results);
     }
 
     @GetMapping("/owner/my-properties")
     @PreAuthorize("hasRole('OWNER')")
+    @Operation(summary = "Get current owner's properties")
     public ResponseEntity<List<PropertySummaryResponse>> getMyProperties(Authentication authentication) {
         List<PropertySummaryResponse> results = propertyService.getOwnerProperties(authentication.getName());
         return ResponseEntity.ok(results);

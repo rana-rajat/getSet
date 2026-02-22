@@ -4,10 +4,14 @@ import com.getset.common.NotFoundException;
 import com.getset.exception.ForbiddenException;
 import com.getset.property.dto.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 import java.util.stream.Collectors;
+import com.getset.common.PageResponse;
 
 @Service
 @RequiredArgsConstructor
@@ -93,7 +97,7 @@ public class PropertyServiceImpl implements PropertyService {
     }
 
     @Override
-    public List<PropertySummaryResponse> searchProperties(
+    public PageResponse<PropertySummaryResponse> searchProperties(
             String city,
             Double minPrice,
             Double maxPrice,
@@ -103,11 +107,23 @@ public class PropertyServiceImpl implements PropertyService {
             int page,
             int size) {
 
-        List<PropertyDocument> docs = propertyRepository.searchProperties(
-                city, minPrice, maxPrice, minBedrooms, furnished, type, page, size);
-        return docs.stream()
+        Pageable pageable = PageRequest.of(page, size);
+        Page<PropertyDocument> propertyPage = propertyRepository.searchProperties(
+                city, minPrice, maxPrice, minBedrooms, furnished, type, pageable);
+
+        List<PropertySummaryResponse> content = propertyPage.getContent().stream()
                 .map(propertyMapper::toSummary)
                 .collect(Collectors.toList());
+
+        return PageResponse.<PropertySummaryResponse>builder()
+                .content(content)
+                .pageNumber(propertyPage.getNumber())
+                .pageSize(propertyPage.getSize())
+                .totalElements(propertyPage.getTotalElements())
+                .totalPages(propertyPage.getTotalPages())
+                .hasNext(propertyPage.hasNext())
+                .hasPrevious(propertyPage.hasPrevious())
+                .build();
     }
 
     @Override

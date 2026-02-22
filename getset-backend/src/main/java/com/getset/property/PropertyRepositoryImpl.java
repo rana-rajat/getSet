@@ -6,28 +6,31 @@ import org.springframework.data.mongodb.core.query.Criteria;
 import org.springframework.data.mongodb.core.query.Query;
 import org.springframework.stereotype.Repository;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+
 import java.util.List;
 
 @Repository
 public class PropertyRepositoryImpl implements PropertyRepositoryCustom {
-    
+
     @Autowired
     private MongoTemplate mongoTemplate;
 
     @Override
-    public List<PropertyDocument> searchProperties(
+    public Page<PropertyDocument> searchProperties(
             String city,
             Double minPrice,
             Double maxPrice,
             Integer minBedrooms,
             Boolean furnished,
             PropertyType type,
-            int page,
-            int size) {
-        
+            Pageable pageable) {
+
         Query query = new Query();
         Criteria criteria = Criteria.where("isActive").is(true);
-        
+
         if (city != null && !city.isEmpty()) {
             criteria = criteria.and("address.city").is(city);
         }
@@ -46,10 +49,14 @@ public class PropertyRepositoryImpl implements PropertyRepositoryCustom {
         if (type != null) {
             criteria = criteria.and("type").is(type);
         }
-        
+
         query.addCriteria(criteria);
-        query.skip((long) page * size).limit(size);
-        
-        return mongoTemplate.find(query, PropertyDocument.class);
+
+        long total = mongoTemplate.count(query, PropertyDocument.class);
+
+        query.with(pageable);
+        List<PropertyDocument> properties = mongoTemplate.find(query, PropertyDocument.class);
+
+        return new PageImpl<>(properties, pageable, total);
     }
 }

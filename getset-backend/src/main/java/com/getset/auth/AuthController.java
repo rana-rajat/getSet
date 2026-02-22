@@ -33,6 +33,13 @@ public class AuthController {
         return ResponseEntity.ok(authService.login(request));
     }
 
+    @PostMapping("/refresh")
+    @Operation(summary = "Refresh access token")
+    public ResponseEntity<AuthResponse> refreshToken(
+            @Valid @RequestBody com.getset.auth.dto.RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request));
+    }
+
     @GetMapping("/me")
     @Operation(summary = "Get current user")
     public ResponseEntity<UserResponse> getCurrentUser(Authentication authentication) {
