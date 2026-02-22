@@ -1,0 +1,74 @@
+spring:
+  application:
+    name: getset-api-gateway
+
+  # Redis for rate limiting state (shared across gateway instances)
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5000
+
+  # Gateway global settings
+  cloud:
+    gateway:
+      # Add traceId to all response headers for client-side correlation
+      default-filters:
+        - AddResponseHeader=X-Content-Type-Options, nosniff
+        - AddResponseHeader=X-Frame-Options, DENY
+      # Disable discovery locator (we use static routes)
+      discovery:
+        locator:
+          enabled: false
+
+server:
+  port: 8090
+
+gateway:
+  backend-uri: ${BACKEND_URI:http://localhost:8080}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411}/api/v2/spans
+
+logging:
+  level:
+    "[com.getset.gateway]": INFO
+    "[org.springframework.cloud.gateway]": INFO
+    "[org.springframework.cloud.gateway.route.RouteDefinitionLocator]": WARN
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      auth-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      property-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      search-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      default-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true

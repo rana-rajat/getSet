@@ -52,6 +52,23 @@ spring:
         size: 5
       thread-name-prefix: getset-scheduler-
 
+  kafka:
+    bootstrap-servers: ${KAFKA_BROKER:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+      acks: all
+      retries: 3
+      properties:
+        enable.idempotence: true
+    consumer:
+      group-id: getset-notification-consumers
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.springframework.kafka.support.serializer.JsonDeserializer
+      properties:
+        spring.json.trusted.packages: "com.getset.events"
+
 server:
   port: 8080
   servlet:
@@ -61,10 +78,23 @@ management:
   endpoints:
     web:
       exposure:
-        include: health,info,metrics
+        include: health,info,metrics,prometheus,env
   endpoint:
     health:
       show-details: when-authorized
+    prometheus:
+      enabled: true
+  # Distributed tracing (Micrometer + Brave → Zipkin)
+  tracing:
+    sampling:
+      probability: 1.0    # 100% in dev; overridden to 0.1 in prod profile
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411}/api/v2/spans
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      env: ${spring.profiles.active:default}
 
 springdoc:
   api-docs:

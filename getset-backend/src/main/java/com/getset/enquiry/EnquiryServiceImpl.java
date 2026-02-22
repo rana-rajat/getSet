@@ -5,6 +5,9 @@ import com.getset.common.PageResponse;
 import com.getset.enquiry.dto.EnquiryRequest;
 import com.getset.enquiry.dto.EnquiryResponse;
 import com.getset.enquiry.dto.EnquiryUpdateRequest;
+import com.getset.events.NotificationEvent;
+import com.getset.events.NotificationEventPublisher;
+import com.getset.property.PropertyDocument;
 import com.getset.property.PropertyRepository;
 import com.getset.user.UserDocument;
 import com.getset.user.UserRepository;
@@ -28,6 +31,7 @@ public class EnquiryServiceImpl implements EnquiryService {
         private final EnquiryRepository enquiryRepository;
         private final PropertyRepository propertyRepository;
         private final UserRepository userRepository;
+        private final NotificationEventPublisher eventPublisher;
 
         @Override
         @Transactional
@@ -43,9 +47,15 @@ public class EnquiryServiceImpl implements EnquiryService {
                 UserDocument renter = userRepository.findById(renterId)
                                 .orElseThrow(() -> new NotFoundException("Renter not found"));
 
+                // Get property for notification context
+                PropertyDocument property = propertyRepository.findById(request.getPropertyId())
+                                .orElseThrow(() -> new NotFoundException(
+                                                "Property not found with ID: " + request.getPropertyId()));
+
                 // Create enquiry
                 EnquiryDocument enquiry = EnquiryDocument.builder()
                                 .propertyId(request.getPropertyId())
+                                .ownerId(property.getOwnerId())
                                 .renterId(renterId)
                                 .message(request.getMessage())
                                 .status(EnquiryStatus.PENDING)
@@ -53,6 +63,22 @@ public class EnquiryServiceImpl implements EnquiryService {
 
                 EnquiryDocument saved = enquiryRepository.save(enquiry);
                 log.info("Enquiry created with ID: {}", saved.getId());
+
+                // Publish async notification event (does NOT block the HTTP response)
+                UserDocument owner = userRepository.findById(property.getOwnerId()).orElse(null);
+                if (owner != null) {
+                        eventPublisher.publish(NotificationEvent.builder()
+                                        .eventType(NotificationEvent.EventType.ENQUIRY_RECEIVED)
+                                        .recipientId(owner.getId())
+                                        .recipientEmail(owner.getEmail())
+                                        .recipientName(owner.getName())
+                                        .actorName(renter.getName())
+                                        .propertyId(property.getId())
+                                        .propertyTitle(property.getTitle())
+                                        .extraPayload(request.getMessage())
+                                        .relatedEntityId(saved.getId())
+                                        .build());
+                }
 
                 return mapToResponse(saved, renter, null);
         }
@@ -152,6 +178,27 @@ public class EnquiryServiceImpl implements EnquiryService {
 
                 UserDocument owner = userRepository.findById(ownerId)
                                 .orElseThrow(() -> new NotFoundException("Owner not found"));
+
+                // Resolve property title for notification
+                PropertyDocument property = propertyRepository.findById(updated.getPropertyId()).orElse(null);
+                String propertyTitle = property != null ? property.getTitle() : "your property";
+
+                // Publish async notification event
+                NotificationEvent.EventType notifType = newStatus == EnquiryStatus.ACCEPTED
+                                ? NotificationEvent.EventType.ENQUIRY_ACCEPTED
+                                : NotificationEvent.EventType.ENQUIRY_REJECTED;
+
+                eventPublisher.publish(NotificationEvent.builder()
+                                .eventType(notifType)
+                                .recipientId(renter.getId())
+                                .recipientEmail(renter.getEmail())
+                                .recipientName(renter.getName())
+                                .actorName(owner.getName())
+                                .propertyId(updated.getPropertyId())
+                                .propertyTitle(propertyTitle)
+                                .extraPayload(request.getRejectionReason())
+                                .relatedEntityId(updated.getId())
+                                .build());
 
                 return mapToResponse(updated, renter, owner);
         }
