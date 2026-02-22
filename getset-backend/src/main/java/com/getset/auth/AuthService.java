@@ -152,8 +152,8 @@ public class AuthService {
     }
 
     public AuthResponse rateLimitFallback(Exception e) {
-        throw new com.getset.common.GetSetException("Too Many Requests",
-                org.springframework.http.HttpStatus.TOO_MANY_REQUESTS);
+        throw new com.getset.exception.GetSetException("TOO_MANY_REQUESTS",
+                "Too Many Requests");
     }
 
     @Retry(name = "userRepository")
