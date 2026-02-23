@@ -10,6 +10,7 @@ A production-grade rental property platform built with **Spring Boot 3 microserv
 |---|---|
 | **[DEVELOPER_WALKTHROUGH.md](./DEVELOPER_WALKTHROUGH.md)** ⭐ | **Start here if you're new** — step-by-step guide through every service and class |
 | **[PROJECT_DETAILS.md](./PROJECT_DETAILS.md)** | Complete class-level reference for every file in the project |
+| **[API_DOCS.md](./API_DOCS.md)** | Comprehensive list of REST endpoints with mock request/response data |
 | **[.env.example](./.env.example)** | All required environment variables with descriptions |
 
 ---

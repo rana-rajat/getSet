@@ -544,6 +544,10 @@ HTTP Request
 | Symptom | Cause | Fix |
 |---|---|---|
 | `401 Unauthorized` on all requests | JWT_SECRET mismatch between services | Make sure all `application.yml` files use the same secret |
+| `403 Forbidden` after valid login | Missing `role` in JWT or Spring Security context | Ensure `JwtService.generateToken()` adds the user's role to the claims, and `PropertyController` extracts `Principal` as a `String` (email), not `UserDetails` |
+| `404 Not Found` from Gateway | Missing trailing wildcard in Gateway predicates | Ensure Gateway paths include both the exact base path (`/api/v1/enquiries`) and wildcard (`/api/v1/enquiries/**`) |
+| Feign `404 Not Found` | `InternalUserController` expecting `ObjectId` but receiving `Email` | Ensure `/internal/users/{id}` handles both MongoDB ObjectIds and Emails |
+| `403 Forbidden` on Get/Update/Delete operations | Comparing JWT email with stored ObjectIds | Ensure `@AuthenticationPrincipal` (email) is queried against `ownerEmail` or `renterEmail` columns, not `ObjectId` columns |
 | `Connection refused` on Feign calls | Target service not running | Start services in the correct order (user → property → others) |
 | Package declaration IDE error | IDE source root wrong | `Ctrl+Shift+P` → Java: Clean Java Language Server Workspace |
 | Kafka consumer not receiving events | Zookeeper/Kafka containers not healthy | `docker-compose ps` — restart if exited |

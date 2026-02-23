@@ -20,6 +20,7 @@ getSet/backend/
 ├── docker/                  ← Prometheus + Grafana config
 ├── docker-compose.yml       ← Full infrastructure stack
 ├── README.md                ← Project overview
+├── API_DOCS.md              ← Comprehensive endpoint list with mock data
 ├── DEVELOPER_WALKTHROUGH.md ← Step-by-step onboarding guide ⭐
 └── .env.example             ← All required environment variables
 ```
