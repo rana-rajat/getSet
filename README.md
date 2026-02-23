@@ -76,18 +76,26 @@ Sync (Feign):   services call each other via /internal/** endpoints
 ### Prerequisites
 - Java 21, Maven 3.8+, Docker Desktop
 
-### 1. Start Infrastructure
+### 1. Environment Setup
+Create your local environment file by copying the example:
+```bash
+cp .env.example .env
+```
+*(Optionally, open `.env` and configure your SMTP `MAIL_*` variables if you want actual emails sent.)*
+
+### 2. Start Infrastructure
 ```bash
 docker-compose up -d
 ```
 
-### 2. Build Shared Library (Required First!)
+### 3. Build Shared Library (Required First!)
 ```bash
 cd getset-common
 mvn clean install
 ```
+*(Windows users: You can just run `.\build_all.bat` from the root directory to build everything automatically!)*
 
-### 3. Start Services (in order)
+### 4. Start Services (in order)
 ```bash
 # Start each in a separate terminal
 cd user-service        && mvn spring-boot:run
@@ -98,8 +106,9 @@ cd message-service     && mvn spring-boot:run
 cd notification-service && mvn spring-boot:run
 cd api-gateway         && mvn spring-boot:run   # last
 ```
+*(Windows users: You can just run `.\run_all.bat` to automatically open 7 terminals and start them in order!)*
 
-### 4. Verify
+### 5. Verify
 Open: http://localhost:8090/actuator/health — should return `{"status":"UP"}`
 
 ---

@@ -347,6 +347,14 @@ favorite-service
 
 ## 🐳 Running the Whole Stack
 
+### Step 0: Environment Setup
+You must configure your local environment variables before starting.
+```bash
+# In the getSet/backend directory
+cp .env.example .env
+```
+*(The `.env` file contains the MongoDB URI, Kafka brokers, and the critical `JWT_SECRET`.)*
+
 ### Step 1: Start Infrastructure
 ```bash
 cd d:\Projects\getSet\backend
@@ -360,6 +368,7 @@ cd getset-common
 mvn clean install
 ```
 > ⚠️ This MUST be done before building any service. All services depend on `getset-common`.
+*(Windows users: You can just run `.\build_all.bat` from the root directory to build everything automatically!)*
 
 ### Step 3: Start Services
 Start in this order (dependencies first):
@@ -385,6 +394,7 @@ cd notification-service && mvn spring-boot:run
 # Terminal 7 (last — after all services are up)
 cd api-gateway && mvn spring-boot:run
 ```
+*(Windows users: You can just run `.\run_all.bat` to automatically open 7 terminals and start them in order!)*
 
 ### Step 4: Verify Everything is Running
 | Service | Health Check URL |
