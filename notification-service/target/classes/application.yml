@@ -30,6 +30,9 @@ server:
   port: 8085
 
 management:
+  health:
+    mail:
+      enabled: false
   endpoints:
     web:
       exposure:

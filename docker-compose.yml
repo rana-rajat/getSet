@@ -118,7 +118,7 @@ services:
       - "8081"
     environment:
       MONGODB_URI: mongodb://root:password@mongodb:27017/getset_users?authSource=admin
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: Z2V0c2V0LXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1oYXNoaW5n
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
       mongodb:
@@ -127,7 +127,7 @@ services:
       - getset-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8081/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8081/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -139,7 +139,7 @@ services:
       - "8082"
     environment:
       MONGODB_URI: mongodb://root:password@mongodb:27017/getset_properties?authSource=admin
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: Z2V0c2V0LXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1oYXNoaW5n
       USER_SERVICE_URL: http://user-service:8081
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
@@ -151,7 +151,7 @@ services:
       - getset-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8082/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8082/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -163,7 +163,7 @@ services:
       - "8083"
     environment:
       MONGODB_URI: mongodb://root:password@mongodb:27017/getset_enquiries?authSource=admin
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: Z2V0c2V0LXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1oYXNoaW5n
       KAFKA_BROKER: kafka:9092
       USER_SERVICE_URL: http://user-service:8081
       PROPERTY_SERVICE_URL: http://property-service:8082
@@ -181,7 +181,7 @@ services:
       - getset-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8083/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8083/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -193,7 +193,7 @@ services:
       - "8084"
     environment:
       MONGODB_URI: mongodb://root:password@mongodb:27017/getset_messages?authSource=admin
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: Z2V0c2V0LXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1oYXNoaW5n
       KAFKA_BROKER: kafka:9092
       USER_SERVICE_URL: http://user-service:8081
       ZIPKIN_URL: http://zipkin:9411
@@ -208,7 +208,7 @@ services:
       - getset-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8084/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8084/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -235,7 +235,7 @@ services:
       - getset-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8085/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8085/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -247,7 +247,7 @@ services:
       - "8086"
     environment:
       MONGODB_URI: mongodb://root:password@mongodb:27017/getset_favs?authSource=admin
-      JWT_SECRET: ${JWT_SECRET}
+      JWT_SECRET: Z2V0c2V0LXN1cGVyLXNlY3JldC1rZXktZm9yLWp3dC10b2tlbi1oYXNoaW5n
       PROPERTY_SERVICE_URL: http://property-service:8082
       ZIPKIN_URL: http://zipkin:9411
     depends_on:
@@ -259,7 +259,7 @@ services:
       - getset-network
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8086/actuator/health || exit 1"]
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8086/actuator/health || exit 1"]
       interval: 20s
       timeout: 10s
       retries: 5
@@ -302,3 +302,4 @@ volumes:
 networks:
   getset-network:
     driver: bridge
+

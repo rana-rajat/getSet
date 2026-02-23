@@ -72,25 +72,25 @@ public class MessageController {
 
     @GetMapping("/received")
     public ResponseEntity<PageResponse<MessageDocument>> getReceived(Principal principal, Pageable pageable) {
-        return ResponseEntity.ok(toPageResponse(messageRepository.findByRecipientId(principal.getName(), pageable)));
+        return ResponseEntity.ok(toPageResponse(messageRepository.findByRecipientEmail(principal.getName(), pageable)));
     }
 
     @GetMapping("/sent")
     public ResponseEntity<PageResponse<MessageDocument>> getSent(Principal principal, Pageable pageable) {
-        return ResponseEntity.ok(toPageResponse(messageRepository.findBySenderId(principal.getName(), pageable)));
+        return ResponseEntity.ok(toPageResponse(messageRepository.findBySenderEmail(principal.getName(), pageable)));
     }
 
     @GetMapping("/unread-count")
     public ResponseEntity<Map<String, Long>> getUnreadCount(Principal principal) {
         return ResponseEntity
-                .ok(Map.of("count", messageRepository.countByRecipientIdAndReadFalse(principal.getName())));
+                .ok(Map.of("count", messageRepository.countByRecipientEmailAndReadFalse(principal.getName())));
     }
 
     @PutMapping("/{id}/read")
     public ResponseEntity<MessageDocument> markRead(@PathVariable String id, Principal principal) {
         MessageDocument msg = messageRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Message not found: " + id));
-        if (msg.getRecipientId().equals(principal.getName())) {
+        if (msg.getRecipientEmail().equals(principal.getName())) {
             msg.setRead(true);
             messageRepository.save(msg);
         }

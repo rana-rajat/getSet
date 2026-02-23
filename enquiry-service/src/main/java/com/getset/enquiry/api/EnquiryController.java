@@ -70,7 +70,8 @@ public class EnquiryController {
     public ResponseEntity<EnquiryDocument> getById(@PathVariable String id, Principal principal) {
         EnquiryDocument e = enquiryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Enquiry not found: " + id));
-        if (!e.getRenterId().equals(principal.getName()) && !e.getOwnerId().equals(principal.getName())) {
+        String userEmail = principal.getName();
+        if (!e.getRenterEmail().equals(userEmail) && !e.getOwnerEmail().equals(userEmail)) {
             throw new ForbiddenException("Access denied");
         }
         return ResponseEntity.ok(e);
@@ -78,13 +79,13 @@ public class EnquiryController {
 
     @GetMapping("/my-enquiries")
     public ResponseEntity<PageResponse<EnquiryDocument>> getMyEnquiries(Principal principal, Pageable pageable) {
-        Page<EnquiryDocument> page = enquiryRepository.findByRenterId(principal.getName(), pageable);
+        Page<EnquiryDocument> page = enquiryRepository.findByRenterEmail(principal.getName(), pageable);
         return ResponseEntity.ok(toPageResponse(page));
     }
 
     @GetMapping("/received")
     public ResponseEntity<PageResponse<EnquiryDocument>> getReceivedEnquiries(Principal principal, Pageable pageable) {
-        Page<EnquiryDocument> page = enquiryRepository.findByOwnerId(principal.getName(), pageable);
+        Page<EnquiryDocument> page = enquiryRepository.findByOwnerEmail(principal.getName(), pageable);
         return ResponseEntity.ok(toPageResponse(page));
     }
 
@@ -94,7 +95,7 @@ public class EnquiryController {
             Principal principal) {
         EnquiryDocument e = enquiryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Enquiry not found: " + id));
-        if (!e.getOwnerId().equals(principal.getName())) {
+        if (!e.getOwnerEmail().equals(principal.getName())) {
             throw new ForbiddenException("Only the owner can update enquiry status");
         }
         EnquiryStatus newStatus = EnquiryStatus.valueOf(req.getStatus().toUpperCase());
@@ -120,7 +121,7 @@ public class EnquiryController {
     public ResponseEntity<Map<String, String>> delete(@PathVariable String id, Principal principal) {
         EnquiryDocument e = enquiryRepository.findById(id)
                 .orElseThrow(() -> new NotFoundException("Enquiry not found: " + id));
-        if (!e.getRenterId().equals(principal.getName())) {
+        if (!e.getRenterEmail().equals(principal.getName())) {
             throw new ForbiddenException("Only the requester can delete an enquiry");
         }
         enquiryRepository.deleteById(id);

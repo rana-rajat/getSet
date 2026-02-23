@@ -12,10 +12,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
-import java.time.Instant;
 import java.util.Map;
 
 @Slf4j
@@ -49,8 +47,8 @@ public class PropertyController {
     @PostMapping
     public ResponseEntity<PropertyDocument> create(
             @RequestBody PropertyDocument request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        request.setOwnerId(userDetails.getUsername());
+            @AuthenticationPrincipal String username) {
+        request.setOwnerId(username);
         request.setAvailable(true);
         PropertyDocument saved = propertyRepository.save(request);
         log.info("Property created: {}", saved.getId());
@@ -61,8 +59,8 @@ public class PropertyController {
     public ResponseEntity<PropertyDocument> update(
             @PathVariable String id,
             @RequestBody PropertyDocument request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        PropertyDocument existing = propertyRepository.findByIdAndOwnerId(id, userDetails.getUsername())
+            @AuthenticationPrincipal String username) {
+        PropertyDocument existing = propertyRepository.findByIdAndOwnerId(id, username)
                 .orElseThrow(() -> new ForbiddenException("You don't own this property"));
         request.setId(existing.getId());
         request.setOwnerId(existing.getOwnerId());
@@ -72,8 +70,8 @@ public class PropertyController {
     @DeleteMapping("/{id}")
     public ResponseEntity<Map<String, String>> delete(
             @PathVariable String id,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        propertyRepository.findByIdAndOwnerId(id, userDetails.getUsername())
+            @AuthenticationPrincipal String username) {
+        propertyRepository.findByIdAndOwnerId(id, username)
                 .orElseThrow(() -> new ForbiddenException("You don't own this property"));
         propertyRepository.deleteById(id);
         return ResponseEntity.ok(Map.of("message", "Property deleted successfully"));
@@ -81,8 +79,8 @@ public class PropertyController {
 
     @GetMapping("/owner/my-properties")
     public ResponseEntity<PageResponse<PropertyDocument>> getMyProperties(
-            @AuthenticationPrincipal UserDetails userDetails, Pageable pageable) {
-        Page<PropertyDocument> page = propertyRepository.findByOwnerId(userDetails.getUsername(), pageable);
+            @AuthenticationPrincipal String username, Pageable pageable) {
+        Page<PropertyDocument> page = propertyRepository.findByOwnerId(username, pageable);
         return ResponseEntity.ok(PageResponse.<PropertyDocument>builder()
                 .content(page.getContent())
                 .pageNumber(page.getNumber()).pageSize(page.getSize())

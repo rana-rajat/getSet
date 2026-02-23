@@ -13,7 +13,13 @@ public interface MessageRepository extends MongoRepository<MessageDocument, Stri
 
     long countByRecipientIdAndReadFalse(String recipientId);
 
+    long countByRecipientEmailAndReadFalse(String recipientEmail);
+
     Page<MessageDocument> findBySenderId(String senderId, Pageable pageable);
 
+    Page<MessageDocument> findBySenderEmail(String senderEmail, Pageable pageable);
+
     Page<MessageDocument> findByRecipientId(String recipientId, Pageable pageable);
+
+    Page<MessageDocument> findByRecipientEmail(String recipientEmail, Pageable pageable);
 }

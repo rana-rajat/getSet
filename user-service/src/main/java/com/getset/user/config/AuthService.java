@@ -14,6 +14,8 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.util.HashMap;
+
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -75,8 +77,10 @@ public class AuthService {
     }
 
     private AuthResponse buildAuthResponse(UserDocument user) {
+        var extraClaims = new HashMap<String, Object>();
+        extraClaims.put("role", user.getRole().name());
         return AuthResponse.builder()
-                .accessToken(jwtService.generateToken(user))
+                .accessToken(jwtService.generateToken(extraClaims, user))
                 .refreshToken(jwtService.generateRefreshToken(user))
                 .id(user.getId()).name(user.getName())
                 .email(user.getEmail()).role(user.getRole().name())

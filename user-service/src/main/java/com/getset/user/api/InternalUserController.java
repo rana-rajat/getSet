@@ -15,25 +15,29 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class InternalUserController {
 
-    private final UserRepository userRepository;
+        private final UserRepository userRepository;
 
-    @GetMapping("/{id}")
-    public UserSummaryDto getUserById(@PathVariable String id) {
-        return userRepository.findById(id)
-                .map(u -> UserSummaryDto.builder()
-                        .id(u.getId()).name(u.getName())
-                        .email(u.getEmail()).role(u.getRole().name())
-                        .phone(u.getPhone()).build())
-                .orElseThrow(() -> new NotFoundException("User not found: " + id));
-    }
+        @GetMapping("/{id}")
+        public UserSummaryDto getUserById(@PathVariable String id) {
+                // Support both MongoDB ObjectId and email lookups (JWT subject is email)
+                var user = id.contains("@")
+                                ? userRepository.findByEmail(id)
+                                                .orElseThrow(() -> new NotFoundException("User not found: " + id))
+                                : userRepository.findById(id)
+                                                .orElseThrow(() -> new NotFoundException("User not found: " + id));
+                return UserSummaryDto.builder()
+                                .id(user.getId()).name(user.getName())
+                                .email(user.getEmail()).role(user.getRole().name())
+                                .phone(user.getPhone()).build();
+        }
 
-    @GetMapping("/by-email/{email}")
-    public UserSummaryDto getUserByEmail(@PathVariable String email) {
-        return userRepository.findByEmail(email)
-                .map(u -> UserSummaryDto.builder()
-                        .id(u.getId()).name(u.getName())
-                        .email(u.getEmail()).role(u.getRole().name())
-                        .phone(u.getPhone()).build())
-                .orElseThrow(() -> new NotFoundException("User not found: " + email));
-    }
+        @GetMapping("/by-email/{email}")
+        public UserSummaryDto getUserByEmail(@PathVariable String email) {
+                return userRepository.findByEmail(email)
+                                .map(u -> UserSummaryDto.builder()
+                                                .id(u.getId()).name(u.getName())
+                                                .email(u.getEmail()).role(u.getRole().name())
+                                                .phone(u.getPhone()).build())
+                                .orElseThrow(() -> new NotFoundException("User not found: " + email));
+        }
 }

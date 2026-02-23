@@ -10,4 +10,8 @@ public interface EnquiryRepository extends MongoRepository<EnquiryDocument, Stri
     Page<EnquiryDocument> findByRenterId(String renterId, Pageable pageable);
 
     Page<EnquiryDocument> findByOwnerId(String ownerId, Pageable pageable);
+
+    Page<EnquiryDocument> findByRenterEmail(String renterEmail, Pageable pageable);
+
+    Page<EnquiryDocument> findByOwnerEmail(String ownerEmail, Pageable pageable);
 }
