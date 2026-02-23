@@ -1,9 +1,0 @@
-com\getset\favorite\config\SecurityConfig.class
-com\getset\favorite\security\JwtService.class
-com\getset\favorite\client\PropertyServiceClient.class
-com\getset\favorite\domain\FavoriteDocument.class
-com\getset\favorite\security\JwtAuthenticationFilter.class
-com\getset\favorite\domain\FavoriteRepository.class
-com\getset\favorite\api\FavoriteController.class
-com\getset\favorite\domain\FavoriteDocument$FavoriteDocumentBuilder.class
-com\getset\favorite\FavoriteServiceApplication.class

@@ -1,9 +1,0 @@
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\api\MessageController.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\client\UserServiceClient.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\config\SecurityConfig.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\domain\MessageDocument.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\domain\MessageRepository.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\event\NotificationEventPublisher.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\MessageServiceApplication.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\security\JwtAuthenticationFilter.java
-D:\Projects\getSet\backend\message-service\src\main\java\com\getset\message\security\JwtService.java
