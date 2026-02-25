@@ -34,7 +34,7 @@ services:
     url: ${FAVORITE_SERVICE_URL:http://localhost:8086}
 
 gateway:
-  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173}
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://stitch.withgoogle.com}
 
 management:
   endpoints:

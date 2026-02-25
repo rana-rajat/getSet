@@ -62,9 +62,29 @@ public class PropertyController {
             @AuthenticationPrincipal String username) {
         PropertyDocument existing = propertyRepository.findByIdAndOwnerId(id, username)
                 .orElseThrow(() -> new ForbiddenException("You don't own this property"));
-        request.setId(existing.getId());
-        request.setOwnerId(existing.getOwnerId());
-        return ResponseEntity.ok(propertyRepository.save(request));
+
+        // Map only editable fields to preserve other data like imageUrls, location,
+        // createdAt
+        if (request.getTitle() != null)
+            existing.setTitle(request.getTitle());
+        if (request.getDescription() != null)
+            existing.setDescription(request.getDescription());
+        if (request.getPricePerMonth() > 0)
+            existing.setPricePerMonth(request.getPricePerMonth());
+        if (request.getBedrooms() >= 0)
+            existing.setBedrooms(request.getBedrooms());
+        if (request.getBathrooms() >= 0)
+            existing.setBathrooms(request.getBathrooms());
+        if (request.getAreaSqFt() > 0)
+            existing.setAreaSqFt(request.getAreaSqFt());
+        if (request.getCity() != null)
+            existing.setCity(request.getCity());
+        // Since address isn't a direct field but often mapped to fullAddress/state/etc
+        // in AddProperty
+        if (request.getAmenities() != null)
+            existing.setAmenities(request.getAmenities());
+
+        return ResponseEntity.ok(propertyRepository.save(existing));
     }
 
     @DeleteMapping("/{id}")
