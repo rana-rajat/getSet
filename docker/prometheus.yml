@@ -1,0 +1,21 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+  external_labels:
+    monitor: 'getset-monitor'
+
+scrape_configs:
+  # GetSet Backend — Spring Boot Actuator Prometheus endpoint
+  - job_name: 'getset-backend'
+    metrics_path: '/api/v1/actuator/prometheus'
+    scrape_interval: 15s
+    static_configs:
+      - targets: ['getset-backend:8080']
+        labels:
+          service: 'getset-backend'
+          env: 'local'
+
+  # Prometheus self-monitoring
+  - job_name: 'prometheus'
+    static_configs:
+      - targets: ['localhost:9090']

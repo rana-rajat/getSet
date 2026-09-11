@@ -1,0 +1,91 @@
+spring:
+  application:
+    name: getset-api-gateway
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 5000
+  cloud:
+    gateway:
+      default-filters:
+        - AddResponseHeader=X-Content-Type-Options, nosniff
+        - AddResponseHeader=X-Frame-Options, DENY
+      discovery:
+        locator:
+          enabled: false
+
+server:
+  port: 8090
+
+# Downstream service URLs
+services:
+  user-service:
+    url: ${USER_SERVICE_URL:http://localhost:8081}
+  property-service:
+    url: ${PROPERTY_SERVICE_URL:http://localhost:8082}
+  enquiry-service:
+    url: ${ENQUIRY_SERVICE_URL:http://localhost:8083}
+  message-service:
+    url: ${MESSAGE_SERVICE_URL:http://localhost:8084}
+  notification-service:
+    url: ${NOTIFICATION_SERVICE_URL:http://localhost:8085}
+  favorite-service:
+    url: ${FAVORITE_SERVICE_URL:http://localhost:8086}
+
+gateway:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:5173,https://stitch.withgoogle.com}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,prometheus
+  endpoint:
+    health:
+      show-details: always
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: ${ZIPKIN_URL:http://localhost:9411}/api/v2/spans
+
+resilience4j:
+  circuitbreaker:
+    instances:
+      user-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      property-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      enquiry-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      message-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      notification-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+      favorite-circuit-breaker:
+        failureRateThreshold: 50
+        waitDurationInOpenState: 10000
+        permittedNumberOfCallsInHalfOpenState: 3
+        automaticTransitionFromOpenToHalfOpenEnabled: true
+
+logging:
+  level:
+    "[com.getset.gateway]": INFO
+    "[org.springframework.cloud.gateway]": INFO
