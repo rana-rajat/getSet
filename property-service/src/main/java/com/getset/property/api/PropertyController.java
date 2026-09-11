@@ -8,7 +8,9 @@ import com.getset.property.domain.PropertyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -24,9 +26,50 @@ public class PropertyController {
 
     private final PropertyRepository propertyRepository;
 
+    /**
+     * GET /api/v1/properties
+     * Supports optional query params: city, propertyType, minPrice, maxPrice, bedrooms, keyword, sort
+     * e.g. ?city=Mumbai&propertyType=APARTMENT&minPrice=10000&maxPrice=50000&bedrooms=2&keyword=sea view&sort=pricePerMonth,asc
+     */
     @GetMapping
-    public ResponseEntity<PageResponse<PropertyDocument>> getAllProperties(Pageable pageable) {
-        Page<PropertyDocument> page = propertyRepository.findAll(pageable);
+    public ResponseEntity<PageResponse<PropertyDocument>> getAllProperties(
+            @RequestParam(required = false) String city,
+            @RequestParam(required = false) String propertyType,
+            @RequestParam(required = false, defaultValue = "0") double minPrice,
+            @RequestParam(required = false, defaultValue = "999999999") double maxPrice,
+            @RequestParam(required = false, defaultValue = "0") int bedrooms,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false, defaultValue = "createdAt") String sortBy,
+            @RequestParam(required = false, defaultValue = "desc") String sortDir,
+            Pageable pageable) {
+
+        Sort sort = sortDir.equalsIgnoreCase("asc")
+                ? Sort.by(sortBy).ascending()
+                : Sort.by(sortBy).descending();
+        Pageable sortedPageable = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize(), sort);
+
+        Page<PropertyDocument> page;
+
+        boolean hasFilters = (city != null && !city.isBlank())
+                || (propertyType != null && !propertyType.isBlank())
+                || minPrice > 0 || maxPrice < 999999999
+                || bedrooms > 0
+                || (keyword != null && !keyword.isBlank());
+
+        if (hasFilters) {
+            page = propertyRepository.searchWithFilters(
+                    (city != null && !city.isBlank()) ? city : null,
+                    (propertyType != null && !propertyType.isBlank()) ? propertyType : null,
+                    minPrice,
+                    maxPrice,
+                    bedrooms,
+                    (keyword != null && !keyword.isBlank()) ? keyword : null,
+                    sortedPageable
+            );
+        } else {
+            page = propertyRepository.findAll(sortedPageable);
+        }
+
         return ResponseEntity.ok(PageResponse.<PropertyDocument>builder()
                 .content(page.getContent())
                 .pageNumber(page.getNumber())

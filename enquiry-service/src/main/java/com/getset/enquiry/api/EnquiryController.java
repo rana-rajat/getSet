@@ -66,17 +66,6 @@ public class EnquiryController {
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 
-    @GetMapping("/{id}")
-    public ResponseEntity<EnquiryDocument> getById(@PathVariable String id, Principal principal) {
-        EnquiryDocument e = enquiryRepository.findById(id)
-                .orElseThrow(() -> new NotFoundException("Enquiry not found: " + id));
-        String userEmail = principal.getName();
-        if (!e.getRenterEmail().equals(userEmail) && !e.getOwnerEmail().equals(userEmail)) {
-            throw new ForbiddenException("Access denied");
-        }
-        return ResponseEntity.ok(e);
-    }
-
     @GetMapping("/my-enquiries")
     public ResponseEntity<PageResponse<EnquiryDocument>> getMyEnquiries(Principal principal, Pageable pageable) {
         Page<EnquiryDocument> page = enquiryRepository.findByRenterEmail(principal.getName(), pageable);
@@ -87,6 +76,17 @@ public class EnquiryController {
     public ResponseEntity<PageResponse<EnquiryDocument>> getReceivedEnquiries(Principal principal, Pageable pageable) {
         Page<EnquiryDocument> page = enquiryRepository.findByOwnerEmail(principal.getName(), pageable);
         return ResponseEntity.ok(toPageResponse(page));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<EnquiryDocument> getById(@PathVariable String id, Principal principal) {
+        EnquiryDocument e = enquiryRepository.findById(id)
+                .orElseThrow(() -> new NotFoundException("Enquiry not found: " + id));
+        String userEmail = principal.getName();
+        if (!e.getRenterEmail().equals(userEmail) && !e.getOwnerEmail().equals(userEmail)) {
+            throw new ForbiddenException("Access denied");
+        }
+        return ResponseEntity.ok(e);
     }
 
     @PutMapping("/{id}")
